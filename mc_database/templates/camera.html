@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html class="light" lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>UltronVision - Camera View</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&amp;family=Noto+Sans:wght@400;500;700&amp;display=swap"
+        rel="stylesheet" />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
+        rel="stylesheet" />
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#01207B",
+                        "primary-dark": "#014d65",
+                        "accent-red": "#dc2626",
+                        "background-light": "#f4f6f8",
+                        "background-dark": "#01207B",
+                        "surface-light": "#ffffff",
+                        "surface-dark": "#01207B",
+                        "text-main": "#01207B",
+                        "text-sub": "#5a7b85",
+                    },
+                    fontFamily: {
+                        "display": ["Space Grotesk", "sans-serif"],
+                        "body": ["Noto Sans", "sans-serif"]
+                    },
+                    borderRadius: { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" },
+                },
+            },
+        }
+    </script>
+    <style>
+        .scrollbar-hide::-webkit-scrollbar {
+            display: none;
+        }
+
+        .scrollbar-hide {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+
+        .bounding-corner {
+            position: absolute;
+            width: 1rem;
+            height: 1rem;
+            border-color: rgba(255, 255, 255, 0.9);
+            filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3));
+        }
+    </style>
+</head>
+
+<body
+    class="bg-background-light dark:bg-background-dark text-text-main font-display min-h-screen flex flex-col selection:bg-primary selection:text-white">
+    <header
+        class="h-16 flex-none bg-surface-light/80 dark:bg-surface-dark/80 backdrop-blur-md border-b border-gray-100 dark:border-white/30 px-6 flex items-center justify-between z-20">
+        <div class="flex items-center gap-4">
+            <img src="/static/images/AdaptLogo.jpg" alt="UltronVision Logo" class="h-8 w-auto">
+            <h1 class="text-xl font-bold tracking-tight text-primary dark:text-white">UltronVision</h1>
+        </div>
+        <div class="flex items-center gap-6">
+            <div class="hidden md:flex items-center gap-2">
+                <div class="size-2 bg-red-500 rounded-full animate-pulse"></div>
+                <span class="text-xs font-bold text-red-600 uppercase tracking-widest">LIVE FEED</span>
+            </div>
+            <div class="w-px h-6 bg-gray-200 dark:bg-gray-700"></div>
+            <button id="theme-toggle"
+                class="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-white/10 transition-colors text-primary dark:text-white"
+                aria-label="Toggle Dark Mode">
+                <span class="material-symbols-outlined theme-icon-light hidden">light_mode</span>
+                <span class="material-symbols-outlined theme-icon-dark">dark_mode</span>
+            </button>
+        </div>
+    </header>
+    <main class="flex-1 flex flex-col relative">
+        <section class="h-[80vh] w-full p-6 pb-2 relative z-10 flex-none">
+            <div
+                class="w-full h-full rounded-2xl overflow-hidden relative bg-black ring-1 ring-black/10 shadow-lg group/video">
+                <div class="absolute inset-0 flex items-center justify-center bg-black">
+                    <video id="webcam" autoplay playsinline class="absolute inset-0 w-full h-full object-cover"></video>
+                    <canvas id="canvas" class="hidden"></canvas>
+
+                    <!-- Face overlay box (simulated for now, could be dynamic) -->
+                    <div id="face-box"
+                        class="hidden absolute top-[30%] left-[45%] w-[14%] h-[28%] group cursor-crosshair transition-all duration-300">
+                        <div class="bounding-corner top-0 left-0 border-t border-l"></div>
+                        <div class="bounding-corner top-0 right-0 border-t border-r"></div>
+                        <div class="bounding-corner bottom-0 left-0 border-b border-l"></div>
+                        <div class="bounding-corner bottom-0 right-0 border-b border-r"></div>
+                    </div>
+
+                    <!-- Top Left Controls -->
+                    <div class="absolute top-6 left-6 flex items-center gap-4 z-20">
+                        <div
+                            class="flex items-center gap-2 bg-black/40 backdrop-blur-sm px-3 py-1 rounded-full border border-white/10">
+                            <div
+                                class="size-2 bg-red-600 rounded-full animate-pulse shadow-[0_0_8px_rgba(220,38,38,0.8)]">
+                            </div>
+                            <span class="text-white text-xs font-bold tracking-wider">LIVE</span>
+                        </div>
+
+                        <!-- Mode Toggle -->
+                        <button id="mode-toggle-btn" onclick="toggleMode()"
+                            class="flex items-center gap-2 bg-black/40 hover:bg-black/60 transition-colors backdrop-blur-sm px-3 py-1 rounded-2xl border border-white/10 text-white cursor-pointer">
+                            <span class="material-symbols-outlined text-[16px]">tune</span>
+                            <span class="text-xs font-bold tracking-wider">MODE: SEARCH</span>
+                        </button>
+                    </div>
+
+                    <!-- Add Mode Name Input (Hidden by default) -->
+                    <div id="name-input-container" class="hidden absolute top-20 left-6 z-20 flex gap-2">
+                        <input type="text" id="new-person-name" placeholder="Enter Person Name"
+                            class="bg-black/40 backdrop-blur-sm border border-white/20 rounded-lg px-3 py-1.5 text-sm text-white placeholder-white/50 focus:outline-none focus:border-primary/50">
+                    </div>
+
+                </div>
+                <div
+                    class="absolute bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-4 px-6 py-3 bg-black/60 backdrop-blur-md rounded-full text-white/90 transition-all duration-500 border border-white/10">
+                    <button class="hover:text-primary transition-colors" onclick="startCamera()"
+                        title="Restart Camera"><span class="material-symbols-outlined">videocam</span></button>
+                    <button class="hover:text-primary transition-colors" id="captureBtn" onclick="captureAndSearch()"
+                        title="Search/Add Face"><span
+                            class="material-symbols-outlined text-[32px]">person_search</span></button>
+                    <button class="hover:text-primary transition-colors" onclick="takeSnapshot()"
+                        title="Take Snapshot"><span class="material-symbols-outlined">photo_camera</span></button>
+                </div>
+            </div>
+        </section>
+        <section class="flex-1 flex gap-6 px-6 pb-6 min-h-0 w-full max-w-[1920px] mx-auto">
+            <div
+                class="w-1/3 xl:w-1/4 bg-surface-light dark:bg-surface-dark rounded-xl border border-gray-100 dark:border-gray-800 shadow-sm flex flex-col overflow-hidden relative">
+                <div class="absolute top-0 left-0 w-full h-0.5 bg-primary"></div>
+                <div
+                    class="p-4 border-b border-gray-50 dark:border-gray-800/50 flex justify-between items-center bg-white/50 dark:bg-black/20">
+                    <h2 class="text-[10px] font-bold text-text-sub uppercase tracking-[0.2em]">Captured Image</h2>
+                </div>
+                <div id="captured-image-container"
+                    class="flex-1 overflow-hidden p-2 flex items-center justify-center bg-black/5 dark:bg-black/20">
+                    <img id="captured-preview" class="h-full w-auto object-contain rounded-lg hidden" src="" />
+                    <div id="captured-placeholder" class="text-center text-text-sub text-xs">Waiting for capture...
+                    </div>
+                </div>
+            </div>
+            <div
+                class="flex-1 bg-surface-light dark:bg-surface-dark rounded-xl border border-gray-100 dark:border-gray-800 shadow-sm flex flex-col overflow-hidden relative">
+                <div class="absolute top-0 left-0 w-full h-0.5 bg-primary"></div>
+                <div
+                    class="p-4 border-b border-gray-50 dark:border-gray-800/50 flex justify-between items-center bg-white/50 dark:bg-black/20">
+                    <h2 class="text-[10px] font-bold text-text-sub uppercase tracking-[0.2em]">Database Match</h2>
+                    <div class="flex items-center gap-2" id="match-status">
+                        <span class="text-[10px] font-bold text-text-sub">READY</span>
+                    </div>
+                </div>
+                <div id="result-detail"
+                    class="flex-1 p-6 flex flex-col lg:flex-row gap-8 overflow-y-auto lg:overflow-visible hidden">
+                    <!-- Detail view injected here -->
+                </div>
+                <div id="empty-state" class="flex-1 p-6 flex items-center justify-center text-text-sub opacity-50">
+                    <div class="text-center">
+                        <span class="material-symbols-outlined text-4xl mb-2">face</span>
+                        <p>No face selected</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+    <button onclick="window.location.href='/upload'"
+        class="fixed bottom-24 left-1/2 -translate-x-1/2 z-40 bg-[#dc2626] hover:bg-[#b91c1c] rounded-2xl size-14 flex items-center justify-center shadow-lg shadow-red-500/30 transition-all duration-300 hover:scale-105 active:scale-95">
+        <div class="size-5 bg-white rounded-[2px]"></div>
+    </button>
+    <nav
+        class="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 bg-[#01207B] p-1.5 rounded-2xl shadow-xl shadow-indigo-500/20 flex items-center gap-1 border border-white/10">
+        <a href="/"
+            class="flex items-center gap-2 px-5 py-2.5 rounded-xl transition-all duration-200 text-white/70 hover:text-white hover:bg-white/5">
+            <span class="material-symbols-outlined text-[20px]">dashboard</span>
+            <span class="text-sm">Dash</span>
+        </a>
+        <div class="w-px h-6 bg-white/10 mx-1"></div>
+        <a href="/upload"
+            class="flex items-center gap-2 px-5 py-2.5 rounded-xl transition-all duration-200 bg-white/10 text-white font-medium shadow-sm">
+            <span class="material-symbols-outlined text-[20px]">search</span>
+            <span class="text-sm">Retrieval</span>
+        </a>
+    </nav>
+
+    <script>
+        const webcam = document.getElementById('webcam');
+        const canvas = document.getElementById('canvas');
+        const capturedPreview = document.getElementById('captured-preview');
+        const capturedPlaceholder = document.getElementById('captured-placeholder');
+        const resultDetail = document.getElementById('result-detail');
+        const emptyState = document.getElementById('empty-state');
+        const matchStatus = document.getElementById('match-status');
+        const captureBtn = document.getElementById('captureBtn');
+
+        // Mode State
+        let currentMode = 'search'; // 'search' or 'add'
+        const modeToggleBtn = document.getElementById('mode-toggle-btn');
+        const nameInputContainer = document.getElementById('name-input-container');
+        const nameInput = document.getElementById('new-person-name');
+
+        // Start Webcam
+        async function startCamera() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                webcam.srcObject = stream;
+            } catch (err) {
+                console.error("Error accessing webcam:", err);
+                alert("Could not access webcam. Please check permissions.");
+            }
+        }
+
+        startCamera();
+
+        function toggleMode() {
+            currentMode = currentMode === 'search' ? 'add' : 'search';
+            updateUIForMode();
+        }
+
+        function updateUIForMode() {
+            const btnSpan = modeToggleBtn.querySelector('span:last-child');
+            if (currentMode === 'add') {
+                modeToggleBtn.classList.replace('bg-black/40', 'bg-accent-red');
+                btnSpan.textContent = 'MODE: ADD';
+                nameInputContainer.classList.remove('hidden');
+                captureBtn.setAttribute('onclick', 'captureAndAdd()');
+                matchStatus.innerHTML = '<span class="text-[10px] font-bold text-text-sub">READY TO ADD</span>';
+            } else {
+                modeToggleBtn.classList.replace('bg-accent-red', 'bg-black/40');
+                btnSpan.textContent = 'MODE: SEARCH';
+                nameInputContainer.classList.add('hidden');
+                captureBtn.setAttribute('onclick', 'captureAndSearch()');
+                matchStatus.innerHTML = '<span class="text-[10px] font-bold text-text-sub">READY</span>';
+            }
+        }
+
+        function showCapturedImage(dataUrl) {
+            capturedPreview.src = dataUrl;
+            capturedPreview.classList.remove('hidden');
+            capturedPlaceholder.classList.add('hidden');
+        }
+
+        async function captureAndSearch() {
+            // Draw frame to canvas
+            canvas.width = webcam.videoWidth;
+            canvas.height = webcam.videoHeight;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(webcam, 0, 0);
+
+            // Get Base64
+            const dataUrl = canvas.toDataURL('image/jpeg');
+            showCapturedImage(dataUrl);
+
+            // Show loading state
+            matchStatus.innerHTML = '<span class="text-[10px] font-bold text-text-sub">SEARCHING...</span>';
+
+            try {
+                const response = await fetch('/api/search', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ img: dataUrl })
+                });
+
+                const data = await response.json();
+
+                if (data.success && data.match) {
+                    renderMatch(data);
+                } else {
+                    renderNoMatch(data);
+                }
+            } catch (err) {
+                console.error(err);
+                matchStatus.innerHTML = '<span class="text-[10px] font-bold text-red-500">ERROR</span>';
+            }
+        }
+
+        async function captureAndAdd() {
+            const name = nameInput.value.trim();
+            if (!name) {
+                alert("Please enter a name first.");
+                return;
+            }
+
+            // Draw frame to canvas
+            canvas.width = webcam.videoWidth;
+            canvas.height = webcam.videoHeight;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(webcam, 0, 0);
+
+            // Get Base64
+            const dataUrl = canvas.toDataURL('image/jpeg');
+            showCapturedImage(dataUrl);
+
+            matchStatus.innerHTML = '<span class="text-[10px] font-bold text-text-sub">ADDING...</span>';
+
+            try {
+                const response = await fetch('/api/add', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ img: dataUrl, name: name }) // Assuming /api/add will be updated or handles name inferred
+                });
+
+                // Since api/add might auto-match, but here we want to force add essentially.
+                // Actually the current /api/add logic tries to match first. 
+                // We should probably rely on its behavior: if it finds a match, it adds to it (good).
+                // If not, it creates new. But we want to assign the name if it's new.
+                // The current /api/add doesn't take 'name' in the top level JSON body for single add, 
+                // only batch_add does explicitly.
+                // Let's check api/routes.py again. 
+                // /api/add takes request.json()...  and calls _process_and_add_image
+                // _process_and_add_image doesn't take 'name'.
+
+                // WAIT: I should have updated /api/add to accept name or update the plan.
+                // The plan said: "Implement `captureForAdd()` and `saveNewPerson()`".
+                // I will proceed with this JS, but I'll need to update /api/add to handle 'name' assignment 
+                // if a new person is created, or I call /api/name immediately after.
+
+                // Let's try calling /api/add then /api/name if successful.
+
+                // Re-reading routes.py: /api/add returns person_id.
+                const data = await response.json();
+
+                if (data.success) {
+                    const personId = data.person_id;
+                    // Now assign name if provided
+                    if (name) {
+                        await fetch('/api/name', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ person_id: personId, name: name })
+                        });
+                    }
+                    alert(`Successfully added image for ${name || 'Unknown'}`);
+                    nameInput.value = ''; // clear input
+                    matchStatus.innerHTML = '<span class="text-[10px] font-bold text-green-500">ADDED</span>';
+                    setTimeout(() => updateUIForMode(), 2000);
+                } else {
+                    alert('Error: ' + data.error);
+                    matchStatus.innerHTML = '<span class="text-[10px] font-bold text-red-500">FAILED</span>';
+                }
+
+            } catch (err) {
+                console.error(err);
+                alert('Error adding image');
+            }
+        }
+
+        function renderMatch(data) {
+            matchStatus.innerHTML = `
+            <div class="size-1.5 rounded-full bg-green-500"></div>
+            <span class="text-[10px] font-bold text-text-sub">CONFIRMED</span>
+        `;
+            emptyState.classList.add('hidden');
+            resultDetail.classList.remove('hidden');
+
+            const scorePct = (data.similarity * 100).toFixed(1);
+
+            // Build image grid — same format as upload/retrieval page
+            let imagesGridHtml = '<p style="font-size:11px;color:#888;margin:12px 0 6px;">Stored Images (sorted by score)</p>';
+            if (data.images && data.images.length > 0) {
+                const sortedImgs = [...data.images].sort((a, b) => (b.score || 0) - (a.score || 0));
+                imagesGridHtml += '<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;">';
+                sortedImgs.forEach(img => {
+                    if (!img.image) return;
+                    let src = img.image;
+                    if (!src.startsWith('data:')) src = `data:image/jpeg;base64,${src}`;
+                    const scoreVal = (img.score !== undefined && img.score !== null) ? parseFloat(img.score).toFixed(1) : '—';
+                    imagesGridHtml += `<div style="border-radius:6px;overflow:hidden;background:#e5e7eb;">
+                        <img src="${src}" style="width:100%;height:110px;object-fit:cover;display:block;">
+                        <div style="background:#01207B;color:#fff;font-size:10px;font-weight:700;text-align:center;padding:2px 0;line-height:1.6;">${scoreVal}</div>
+                    </div>`;
+                });
+                imagesGridHtml += '</div>';
+            }
+
+            resultDetail.innerHTML = `
+            <div style="width:100%;">
+                <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+                    <h3 style="font-size:20px;font-weight:700;color:#01207B;">${data.name || 'Unknown'}</h3>
+                    <button onclick="toggleNameEdit('${data.person_id}')" style="background:none;border:none;cursor:pointer;color:#5a7b85;">
+                        <span class="material-symbols-outlined" style="font-size:16px;">edit</span>
+                    </button>
+                </div>
+                <div id="name-edit-${data.person_id}" class="hidden" style="display:none;align-items:center;gap:8px;margin-bottom:10px;">
+                    <input type="text" id="input-${data.person_id}" style="font-size:13px;border:1px solid #ccc;border-radius:4px;padding:4px 8px;" placeholder="Enter name">
+                    <button onclick="assignName('${data.person_id}')" style="font-size:12px;background:#01207B;color:#fff;border:none;border-radius:4px;padding:5px 12px;cursor:pointer;font-weight:700;">SAVE</button>
+                </div>
+                <div style="display:flex;align-items:center;gap:6px;margin-bottom:12px;">
+                    <span class="material-symbols-outlined" style="font-size:14px;color:#5a7b85;">badge</span>
+                    <code style="font-size:11px;font-family:monospace;font-weight:700;">${data.person_id.substring(0, 8)}</code>
+                    <span style="margin-left:12px;font-size:11px;color:#5a7b85;">Confidence:</span>
+                    <span style="font-size:16px;font-weight:800;color:#01207B;">${scorePct}%</span>
+                </div>
+                ${imagesGridHtml}
+            </div>
+        `;
+        }
+
+        function renderNoMatch(data) {
+            matchStatus.innerHTML = '<span class="text-[10px] font-bold text-text-sub dark:text-white/60">NO MATCH</span>';
+            emptyState.classList.remove('hidden');
+            resultDetail.classList.add('hidden');
+            emptyState.innerHTML = `
+            <div class="text-center">
+                <span class="material-symbols-outlined text-4xl mb-2 text-primary dark:text-white">warning</span>
+                <p class="text-text-main dark:text-white">No matching person found</p>
+            </div>
+        `;
+        }
+
+        function toggleNameEdit(id) {
+            const el = document.getElementById(`name-edit-${id}`);
+            el.classList.toggle('hidden');
+        }
+
+        async function assignName(id) {
+            const input = document.getElementById(`input-${id}`);
+            const name = input.value.trim();
+            if (!name) return;
+
+            try {
+                const response = await fetch('/api/name', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ person_id: id, name: name })
+                });
+                const data = await response.json();
+                if (data.success) {
+                    alert('Name assigned!');
+                    // Re-run search logic to refresh view
+                    captureAndSearch();
+                } else {
+                    alert('Error: ' + (data.error || 'Failed to assign name'));
+                }
+            } catch (err) {
+                console.error(err);
+                alert('Connection error');
+            }
+        }
+
+        function takeSnapshot() {
+            // Draw frame to canvas
+            canvas.width = webcam.videoWidth;
+            canvas.height = webcam.videoHeight;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(webcam, 0, 0);
+
+            // Convert to data URL
+            const dataUrl = canvas.toDataURL('image/jpeg');
+            showCapturedImage(dataUrl);
+
+            // Trigger download
+            const link = document.createElement('a');
+            link.href = dataUrl;
+            link.download = `snapshot_${new Date().toISOString().slice(0, 19).replace(/:/g, "-")}.jpg`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+    </script>
+    <script>
+        (function () {
+            const themeToggleBtn = document.getElementById('theme-toggle');
+            const htmlRoot = document.documentElement;
+            const iconLight = document.querySelector('.theme-icon-light');
+            const iconDark = document.querySelector('.theme-icon-dark');
+
+            function updateThemeUI() {
+                const isDark = htmlRoot.classList.contains('dark');
+                if (isDark) {
+                    iconLight.classList.remove('hidden');
+                    iconDark.classList.add('hidden');
+                } else {
+                    iconLight.classList.add('hidden');
+                    iconDark.classList.remove('hidden');
+                }
+            }
+
+            // Initialize state
+            if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                htmlRoot.classList.add('dark');
+            } else {
+                htmlRoot.classList.remove('dark');
+            }
+            updateThemeUI();
+
+            themeToggleBtn.addEventListener('click', () => {
+                if (htmlRoot.classList.contains('dark')) {
+                    htmlRoot.classList.remove('dark');
+                    localStorage.theme = 'light';
+                } else {
+                    htmlRoot.classList.add('dark');
+                    localStorage.theme = 'dark';
+                }
+                updateThemeUI();
+            });
+        })();
+    </script>
+</body>
+
+</html>

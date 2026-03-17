@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html class="light" lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>UltronVision - Upload View</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;700&amp;family=Noto+Sans:wght@400;500;700&amp;display=swap"
+        rel="stylesheet" />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
+        rel="stylesheet" />
+    <script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#01207B",
+                        "primary-light": "#334EAC",
+                        "background-light": "#ffffff",
+                        "background-dark": "#01207B",
+                        "text-main": "#01207B",
+                        "text-muted": "#6b7280",
+                    },
+                    fontFamily: {
+                        "display": ["Space Grotesk", "sans-serif"],
+                        "body": ["Noto Sans", "sans-serif"]
+                    },
+                },
+            },
+        }
+    </script>
+    <style>
+        body {
+            font-family: "Noto Sans", sans-serif;
+        }
+
+        h1,
+        h2,
+        h3,
+        h4,
+        h5,
+        h6 {
+            font-family: "Space Grotesk", sans-serif;
+        }
+
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+</head>
+
+<body
+    class="bg-background-light dark:bg-background-dark text-text-main dark:text-gray-100 flex flex-col min-h-screen overflow-x-hidden">
+    <header
+        class="flex items-center justify-between border-b border-gray-100 dark:border-white/30 bg-white dark:bg-[#0f1e23] px-8 py-5 sticky top-0 z-50">
+        <div class="flex items-center gap-3">
+            <img src="/static/images/AdaptLogo.jpg" alt="UltronVision Logo" class="h-8 w-auto">
+            <h2 class="text-primary dark:text-white text-lg font-bold tracking-tight">UltronVision</h2>
+        </div>
+        <div class="flex items-center gap-6">
+            <button id="theme-toggle"
+                class="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-white/10 transition-colors text-primary dark:text-white"
+                aria-label="Toggle Dark Mode">
+                <span class="material-symbols-outlined theme-icon-light hidden">light_mode</span>
+                <span class="material-symbols-outlined theme-icon-dark">dark_mode</span>
+            </button>
+        </div>
+    </header>
+    <main class="flex-1 flex flex-col w-full max-w-[1000px] mx-auto px-6 py-12 gap-16 pb-32">
+        <section class="flex flex-col gap-6">
+            <div class="flex items-end justify-between">
+                <div>
+                    <h1 class="text-3xl font-light text-text-main dark:text-white tracking-tight mb-1">Upload Footage
+                    </h1>
+                    <p class="text-sm text-text-muted dark:text-white/60">Drag files directly onto the canvas below to
+                        search.</p>
+                </div>
+            </div>
+            <div id="drop-zone"
+                class="relative w-full rounded-lg border border-dashed border-gray-300 dark:border-white/30 hover:border-primary/50 dark:hover:border-white transition-colors duration-300 h-64 flex flex-col items-center justify-center gap-3 cursor-pointer group">
+                <input type="file" id="file-input" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                    accept="image/*">
+                <div class="text-center pointer-events-none">
+                    <p
+                        class="text-text-main dark:text-white text-lg font-medium group-hover:text-primary dark:group-hover:text-white transition-colors">
+                        Drop image to search</p>
+                    <p class="text-text-muted dark:text-white/60 text-xs mt-1 font-body">JPG, PNG up to 5MB</p>
+                </div>
+                <div class="mt-2 pointer-events-none">
+                    <span
+                        class="text-xs font-bold text-primary dark:text-white border-b border-primary dark:border-white pb-0.5 group-hover:opacity-80">BROWSE
+                        FILES</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Search Results Section -->
+        <section id="results-section" class="hidden flex flex-col gap-4">
+            <h3 class="text-xl font-medium text-text-main dark:text-white">Search Results</h3>
+            <div id="results-container"
+                class="bg-gray-50 dark:bg-zinc-900 rounded-lg p-6 border border-gray-200 dark:border-gray-800">
+                <!-- Results injected here -->
+            </div>
+        </section>
+
+        <section class="flex flex-col gap-4">
+            <div
+                class="flex items-center gap-3 border-b border-gray-200 dark:border-gray-700 pb-3 group focus-within:border-primary transition-colors">
+                <span class="material-symbols-outlined text-gray-400 group-focus-within:text-primary">search</span>
+                <input id="text-search"
+                    class="flex-1 bg-transparent border-none focus:ring-0 p-0 text-lg text-text-main dark:text-white placeholder-gray-300 font-light"
+                    placeholder="Search by name or ID..."
+                    onkeydown="if(event.key==='Enter') searchByName()" />
+                <button onclick="searchByName()" class="text-primary font-bold text-sm uppercase">Search</button>
+            </div>
+        </section>
+
+    </main>
+    <button aria-label="Start Recording" onclick="window.location.href='/camera'"
+        class="fixed bottom-24 left-1/2 -translate-x-1/2 z-40 bg-white dark:bg-[#0f1e23] rounded-full p-1.5 shadow-xl shadow-gray-200/50 dark:shadow-black/50 hover:scale-105 transition-transform duration-300 group">
+        <div class="size-12 rounded-full border border-red-500 flex items-center justify-center">
+            <div class="size-3 bg-red-600 rounded-full group-hover:scale-110 transition-transform"></div>
+        </div>
+    </button>
+    <nav
+        class="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 bg-[#01207B] p-1.5 rounded-2xl shadow-xl shadow-indigo-500/20 flex items-center gap-1 border border-white/10">
+        <a href="/"
+            class="flex items-center gap-2 px-5 py-2.5 rounded-xl transition-all duration-200 text-white/70 hover:text-white hover:bg-white/5">
+            <span class="material-symbols-outlined text-[20px]">dashboard</span>
+            <span class="text-sm">Dash</span>
+        </a>
+        <div class="w-px h-6 bg-white/10 mx-1"></div>
+        <a href="/upload"
+            class="flex items-center gap-2 px-5 py-2.5 rounded-xl transition-all duration-200 bg-white/10 text-white font-medium shadow-sm">
+            <span class="material-symbols-outlined text-[20px]">search</span>
+            <span class="text-sm">Retrieval</span>
+        </a>
+    </nav>
+
+    <script>
+        const fileInput = document.getElementById('file-input');
+        const dropZone = document.getElementById('drop-zone');
+        const resultsSection = document.getElementById('results-section');
+        const resultsContainer = document.getElementById('results-container');
+        const textSearch = document.getElementById('text-search');
+
+        fileInput.addEventListener('change', handleFileSelect);
+
+        // Highlight drop zone
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('bg-gray-50', 'dark:bg-white/5');
+        });
+
+        dropZone.addEventListener('dragleave', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('bg-gray-50', 'dark:bg-white/5');
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('bg-gray-50', 'dark:bg-white/5');
+            if (e.dataTransfer.files.length) {
+                handleFile(e.dataTransfer.files[0]);
+            }
+        });
+
+        function handleFileSelect(e) {
+            if (e.target.files.length) {
+                handleFile(e.target.files[0]);
+            }
+        }
+
+        function handleFile(file) {
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                const base64Data = e.target.result;
+                searchImage(base64Data);
+            };
+            reader.readAsDataURL(file);
+        }
+
+        async function searchImage(base64Img) {
+            showLoading();
+            try {
+                const response = await fetch('/api/search', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ img: base64Img })
+                });
+                const data = await response.json();
+                renderResults(data);
+            } catch (err) {
+                console.error(err);
+                renderError('Search failed.');
+            }
+        }
+
+        async function searchByName() {
+            const query = textSearch.value.trim();
+            if (!query) return;
+
+            showLoading();
+            try {
+                // Auto-detect UUID (8-4-4-4-12 hex) and use ?id= instead of ?name=
+                const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(query);
+                const param = isUUID ? `id=${encodeURIComponent(query)}` : `name=${encodeURIComponent(query)}`;
+                const response = await fetch(`/api/search?${param}`);
+                const data = await response.json();
+                renderResults(data);
+            } catch (err) {
+                console.error(err);
+                renderError('Search failed.');
+            }
+        }
+
+        function showLoading() {
+            resultsSection.classList.remove('hidden');
+            resultsContainer.innerHTML = '<p class="text-center text-gray-500">Searching...</p>';
+        }
+
+        function renderResults(data) {
+            if (data.success && (data.match || data.images)) {
+                const scorePct = data.similarity ? (data.similarity * 100).toFixed(1) + '%' : 'N/A';
+
+                let imagesGridHtml = '';
+                if (data.images && data.images.length > 0) {
+                    // Sort by score descending (safety net — API already sorts, but ensure client-side too)
+                    const sortedImgs = [...data.images].sort((a, b) => (b.score || 0) - (a.score || 0));
+                    imagesGridHtml = '<div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2 mt-4">';
+                    sortedImgs.forEach(img => {
+                        if (!img.image) return; // Skip images with missing file on disk
+                        let src = img.image;
+                        if (!src.startsWith('data:')) {
+                            src = `data:image/jpeg;base64,${src}`;
+                        }
+                        const scoreVal = (img.score !== undefined && img.score !== null) ? parseFloat(img.score).toFixed(1) : null;
+                        // Use top-right badge with explicit pill style — no absolute + aspect-ratio conflict
+                        const scoreBadge = scoreVal !== null
+                            ? `<span style="position:absolute;top:5px;right:5px;background:rgba(0,0,0,0.72);color:#fff;font-size:10px;font-weight:800;padding:2px 6px;border-radius:10px;letter-spacing:0.02em;line-height:1.4;pointer-events:none;">${scoreVal}</span>`
+                            : '';
+                        // Use explicit height on img so parent has a natural height for absolute positioning
+                        imagesGridHtml += `<div style="position:relative;border-radius:8px;overflow:hidden;background:#e5e7eb;cursor:pointer;">
+                            <img src="${src}" style="width:100%;height:140px;object-fit:cover;display:block;">
+                            ${scoreBadge}
+                        </div>`;
+                    });
+                    imagesGridHtml += '</div>';
+                }
+
+                resultsContainer.innerHTML = `
+                <div class="flex flex-col gap-4">
+                    <div class="flex gap-6 items-start">
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <h4 class="text-xl font-bold text-primary dark:text-blue-400">${data.name || 'Unknown Person'}</h4>
+                                <button onclick="toggleNameEdit('${data.person_id}')" class="text-text-muted hover:text-primary"><span class="material-symbols-outlined text-sm">edit</span></button>
+                            </div>
+                            <div id="name-edit-${data.person_id}" class="hidden mt-2 flex items-center gap-2">
+                                <input type="text" id="input-${data.person_id}" class="text-sm border border-gray-300 dark:border-gray-700 rounded px-2 py-1 dark:bg-zinc-800 dark:text-white" placeholder="Enter name">
+                                <button onclick="assignName('${data.person_id}')" class="text-xs bg-primary text-white px-3 py-1.5 rounded font-bold hover:bg-primary-light transition-colors">SAVE</button>
+                            </div>
+                            <p class="text-sm text-text-muted mt-1 font-mono">ID: ${data.person_id}</p>
+                            <div class="mt-4 flex gap-4">
+                                <div class="bg-green-100 text-green-800 px-3 py-1 rounded text-sm font-bold">Match: ${scorePct}</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div>
+                        <h5 class="text-sm font-bold text-text-main dark:text-white mb-2">Stored Images</h5>
+                        ${imagesGridHtml}
+                    </div>
+                </div>
+            `;
+            } else {
+                renderError('No match found.');
+            }
+        }
+
+        function toggleNameEdit(id) {
+            const el = document.getElementById(`name-edit-${id}`);
+            el.classList.toggle('hidden');
+        }
+
+        async function assignName(id) {
+            const input = document.getElementById(`input-${id}`);
+            const name = input.value.trim();
+            if (!name) return;
+
+            try {
+                const response = await fetch('/api/name', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ person_id: id, name: name })
+                });
+                const data = await response.json();
+                if (data.success) {
+                    alert('Name assigned!');
+                    // Refresh search if we have a current search term, or just reload
+                    if (fileInput.files.length) handleFile(fileInput.files[0]);
+                    else if (textSearch.value) searchByName();
+                } else {
+                    alert('Error: ' + (data.error || 'Failed to assign name'));
+                }
+            } catch (err) {
+                console.error(err);
+                alert('Connection error');
+            }
+        }
+
+        function renderError(msg) {
+            resultsContainer.innerHTML = `<p class="text-center text-red-500 font-bold">${msg}</p>`;
+        }
+    </script>
+    <script>
+        (function () {
+            const themeToggleBtn = document.getElementById('theme-toggle');
+            const htmlRoot = document.documentElement;
+            const iconLight = document.querySelector('.theme-icon-light');
+            const iconDark = document.querySelector('.theme-icon-dark');
+
+            function updateThemeUI() {
+                const isDark = htmlRoot.classList.contains('dark');
+                if (isDark) {
+                    iconLight.classList.remove('hidden');
+                    iconDark.classList.add('hidden');
+                } else {
+                    iconLight.classList.add('hidden');
+                    iconDark.classList.remove('hidden');
+                }
+            }
+
+            // Initialize state
+            if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                htmlRoot.classList.add('dark');
+            } else {
+                htmlRoot.classList.remove('dark');
+            }
+            updateThemeUI();
+
+            themeToggleBtn.addEventListener('click', () => {
+                if (htmlRoot.classList.contains('dark')) {
+                    htmlRoot.classList.remove('dark');
+                    localStorage.theme = 'light';
+                } else {
+                    htmlRoot.classList.add('dark');
+                    localStorage.theme = 'dark';
+                }
+                updateThemeUI();
+            });
+        })();
+    </script>
+</body>
+
+</html>

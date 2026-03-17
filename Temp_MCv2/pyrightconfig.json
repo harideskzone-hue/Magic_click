@@ -1,0 +1,9 @@
+{
+  "venvPath": ".",
+  "venv": "mcenv",
+  "executionEnvironments": [
+    {
+      "root": "."
+    }
+  ]
+}
