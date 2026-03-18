@@ -64,7 +64,7 @@ def filter_scored_images(input_dir, source_dir, output_dir, min_score=None, repo
                 encoded_string = base64.b64encode(image_file.read()).decode('utf-8')
             
             payload = {
-                "img": encoded_string,
+                "img": f"data:image/jpeg;base64,{encoded_string}",
                 "score": float(score)  # Pass the aesthetic score
             }
             upload_url = f"{_DB_URL}/api/add"

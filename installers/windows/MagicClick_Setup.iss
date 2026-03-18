@@ -72,8 +72,8 @@ Filename: "powershell.exe"; \
   StatusMsg: "Checking Python installation..."
 
 ; Step 2: Run the premium installer bootstrap GUI
-Filename: "python"; \
-  Parameters: """{app}\installers\installer_bootstrap.py"""; \
+Filename: "powershell.exe"; \
+  Parameters: "-ExecutionPolicy Bypass -WindowStyle Hidden -Command ""$env:Path = [System.Environment]::GetEnvironmentVariable('Path','Machine') + ';' + [System.Environment]::GetEnvironmentVariable('Path','User'); python '{app}\installers\installer_bootstrap.py'"""; \
   WorkingDir: "{app}"; \
   Flags: waituntilterminated; \
   StatusMsg: "Setting up Magic Click (this takes a few minutes)..."

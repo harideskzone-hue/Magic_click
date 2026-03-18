@@ -241,10 +241,21 @@ def create_app() -> FastAPI:
             # Send SIGTERM to the parent process group (ui_launcher.py started us)
             try:
                 pgid = os.getpgid(os.getpid())
+                log.info(f"Issuing killpg to process group {pgid}")
                 os.killpg(pgid, signal.SIGTERM)
-            except Exception:
-                pass
-            # Fallback: kill self
+            except Exception as e:
+                log.error(f"killpg failed: {e}")
+            
+            # Fallback 1: Kill the parent process directly (ui_launcher.py)
+            try:
+                ppid = os.getppid()
+                log.info(f"Issuing kill to parent process {ppid}")
+                os.kill(ppid, signal.SIGTERM)
+            except Exception as e:
+                log.error(f"kill parent failed: {e}")
+
+            # Fallback 2: kill self
+            log.info(f"Killing self {os.getpid()}")
             os.kill(os.getpid(), signal.SIGTERM)
 
         threading.Thread(target=_shutdown, daemon=True).start()

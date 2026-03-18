@@ -102,8 +102,22 @@ class InstallerGUI:
         self._closing = False
         self._allow_close = False
 
+        # Declare all widget attributes upfront so the type-checker can see them
+        self._stage_label: tk.Label
+        self._sub_label: tk.Label
+        self._dots: list[tk.Label] = []
+        self._bar: tk.Frame
+        self._track_w: int
+        self._pct_label: tk.Label
+        self._log_text: tk.Text
+        self._btn_frame: tk.Frame
+        self._action_btn: tk.Button
+
         if IS_MAC:
-            try: self.root.tk.call("::tk::unsupported::MacWindowStyle", "style", self.root._w, "document", "closeBox")
+            try: self.root.tk.call(
+                "::tk::unsupported::MacWindowStyle", "style",
+                str(self.root), "document", "closeBox"
+            )
             except Exception: pass
 
         self._build_ui()
@@ -255,8 +269,10 @@ def validate_system() -> list[str]:
 
     # macOS version >= 12 (Monterey)
     if IS_MAC:
-        ver = tuple(int(x) for x in platform.mac_ver()[0].split(".")[:2])
-        if ver < (12, 0):
+        _parts = platform.mac_ver()[0].split(".")
+        _major = int(_parts[0]) if len(_parts) > 0 else 0
+        _minor = int(_parts[1]) if len(_parts) > 1 else 0
+        if (_major, _minor) < (12, 0):
             errors.append(f"macOS 12 (Monterey) or newer required. You have {platform.mac_ver()[0]}.")
 
     # Disk space
@@ -308,20 +324,20 @@ def release_lock():
 # Core Setup Logic
 # ══════════════════════════════════════════════════════════════════════════════
 
-def _run(cmd: list, cwd=None, capture=True):
+def _run(cmd: list[str], cwd=None, capture: bool = True):
     """Run a subprocess, return (returncode, combined_output)."""
     r = subprocess.run(cmd, cwd=cwd or ROOT, capture_output=capture, text=True)
     out = (r.stdout or "") + (r.stderr or "")
-    log.debug("CMD %s → rc=%d\n%s", cmd, r.returncode, out[:2000])
+    log.debug("CMD %s → rc=%d\n%s", cmd, r.returncode, out[:2000])  # type: ignore[index]
     return r.returncode, out
 
 
-def _pip_install(extra_flags: list, gui: InstallerGUI, attempt: int) -> bool:
+def _pip_install(extra_flags: list[str], gui: InstallerGUI, attempt: int) -> bool:
     gui.append_log(f"  pip install (attempt {attempt}/{MAX_RETRIES})…")
-    cmd = [str(VENV_PIP), "install", "--quiet", "--no-warn-script-location"] + extra_flags
+    cmd: list[str] = [str(VENV_PIP), "install", "--quiet", "--no-warn-script-location"] + extra_flags
     for req in REQ_FILES:
         if req.exists():
-            cmd += ["-r", str(req)]
+            cmd.extend(["-r", str(req)])
     rc, out = _run(cmd)
     for line in out.splitlines():
         if line.strip(): gui.append_log(f"    {line}")
@@ -408,11 +424,13 @@ def run_setup(gui: InstallerGUI):
         if errors:
             msg = "\n".join(f"• {e}" for e in errors)
             log.error("Pre-install validation failed:\n%s", msg)
-            gui.root.after(0, lambda: gui.show_error(
-                "Your system doesn't meet the requirements:\n\n" + msg,
-                on_retry=lambda: threading.Thread(target=attempt, daemon=True).start(),
-                on_cancel=gui.root.destroy,
-            ))
+            def _show_system_error() -> None:
+                gui.show_error(
+                    "Your system doesn't meet the requirements:\n\n" + msg,
+                    on_retry=lambda: threading.Thread(target=attempt, daemon=True).start(),
+                    on_cancel=gui.root.destroy,
+                )
+            gui.root.after(0, _show_system_error)  # type: ignore[arg-type]
             return
 
         gui.append_log("✓ OS, disk space, and internet checks passed.")
@@ -425,12 +443,14 @@ def run_setup(gui: InstallerGUI):
             if rc != 0:
                 gui.append_log(out, error=True)
                 _rollback(gui)
-                gui.root.after(0, lambda: gui.show_error(
-                    "Failed to create Python virtual environment.\n\n"
-                    "Please check that you have write permission to:\n" + str(ROOT),
-                    on_retry=lambda: threading.Thread(target=attempt, daemon=True).start(),
-                    on_cancel=gui.root.destroy,
-                ))
+                def _show_venv_error() -> None:
+                    gui.show_error(
+                        "Failed to create Python virtual environment.\n\n"
+                        "Please check that you have write permission to:\n" + str(ROOT),
+                        on_retry=lambda: threading.Thread(target=attempt, daemon=True).start(),
+                        on_cancel=gui.root.destroy,
+                    )
+                gui.root.after(0, _show_venv_error)  # type: ignore[arg-type]
                 return
             gui.append_log("✓ Virtual environment created.")
         else:
@@ -450,13 +470,15 @@ def run_setup(gui: InstallerGUI):
 
         if not installed:
             _rollback(gui)
-            gui.root.after(0, lambda: gui.show_error(
-                "Package installation failed after 3 attempts.\n\n"
-                "Please check your internet connection and try again.\n"
-                f"See {LOG_FILE.name} for details.",
-                on_retry=lambda: threading.Thread(target=attempt, daemon=True).start(),
-                on_cancel=gui.root.destroy,
-            ))
+            def _show_pip_error() -> None:
+                gui.show_error(
+                    "Package installation failed after 3 attempts.\n\n"
+                    "Please check your internet connection and try again.\n"
+                    f"See {LOG_FILE.name} for details.",
+                    on_retry=lambda: threading.Thread(target=attempt, daemon=True).start(),
+                    on_cancel=gui.root.destroy,
+                )
+            gui.root.after(0, _show_pip_error)  # type: ignore[arg-type]
             return
 
         gui.append_log("✓ All packages installed.")
@@ -472,13 +494,15 @@ def run_setup(gui: InstallerGUI):
         gui.set_stage(4, 91, "Starting services to verify everything works…")
         ok = _verify_services(gui)
         if not ok:
-            gui.root.after(0, lambda: gui.show_error(
-                "Services failed to start.\n\n"
-                "The packages installed correctly but the API did not respond.\n"
-                f"Check {LOG_FILE.name} for details.",
-                on_retry=lambda: threading.Thread(target=attempt, daemon=True).start(),
-                on_cancel=gui.root.destroy,
-            ))
+            def _show_svc_error() -> None:
+                gui.show_error(
+                    "Services failed to start.\n\n"
+                    "The packages installed correctly but the API did not respond.\n"
+                    f"Check {LOG_FILE.name} for details.",
+                    on_retry=lambda: threading.Thread(target=attempt, daemon=True).start(),
+                    on_cancel=gui.root.destroy,
+                )
+            gui.root.after(0, _show_svc_error)  # type: ignore[arg-type]
             return
 
         gui.append_log("✓ All services verified successfully.")
@@ -489,7 +513,9 @@ def run_setup(gui: InstallerGUI):
             gui.root.destroy()
             _launch_pipeline()
 
-        gui.root.after(0, lambda: gui.show_success(on_launch=launch))
+        def _show_success() -> None:
+            gui.show_success(on_launch=launch)
+        gui.root.after(0, _show_success)  # type: ignore[arg-type]
         log.info("Setup completed successfully.")
 
     attempt()
