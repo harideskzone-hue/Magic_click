@@ -5,15 +5,37 @@
 <style>
   body {
     font-family: -apple-system, 'Helvetica Neue', Arial, sans-serif;
-    background: #F4F7FE; color: #01207B;
-    padding: 28px 36px; margin: 0;
-    font-size: 13px; line-height: 1.6;
+    color: #222;
+    padding: 28px 36px;
+    margin: 0;
+    font-size: 13px;
+    line-height: 1.6;
+    background: transparent;
   }
-  h1 { font-size: 1.6rem; font-weight: 700; margin: 0 0 6px; color: #15803D; }
-  .sub { color: #64748b; font-size: 0.85rem; margin-bottom: 22px; }
-  .card { background:#fff; border:1px solid rgba(1,32,123,0.12); border-radius:12px; padding:16px 20px; margin-bottom:14px; }
-  .card h2 { font-size:0.85rem; font-weight:700; margin:0 0 6px; }
-  .card p  { margin:0; color:#334155; font-size:0.82rem; }
+  h1 { font-size: 1.6rem; font-weight: 700; margin: 0 0 6px; color: #16a34a; }
+  .sub { color: #666; font-size: 0.85rem; margin-bottom: 22px; }
+  .card {
+    background: rgba(0, 0, 0, 0.04);
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    border-radius: 12px;
+    padding: 16px 20px;
+    margin-bottom: 14px;
+  }
+  .card h2 { font-size: 0.85rem; font-weight: 700; margin: 0 0 6px; color: #111; }
+  .card p  { margin: 0; color: #333; font-size: 0.82rem; }
+
+  /* macOS Native Dark Mode Adaptation */
+  @media (prefers-color-scheme: dark) {
+    body { color: #ddd; }
+    h1 { color: #22c55e; }
+    .sub { color: #aaa; }
+    .card {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+    }
+    .card h2 { color: #eee; }
+    .card p  { color: #ccc; }
+  }
 </style>
 </head>
 <body>
