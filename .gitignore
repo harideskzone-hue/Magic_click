@@ -41,5 +41,4 @@ models/
 .insightface/
 
 # Temporary
-Temp_MCv2/
 tmp/
