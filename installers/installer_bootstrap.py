@@ -38,7 +38,10 @@ from tkinter import messagebox
 HERE        = Path(__file__).resolve().parent          # installers/
 ROOT        = HERE.parent                               # Magic_Click/
 VENV_DIR    = ROOT / ".venv"
-REQ_FILE    = ROOT / "mc_database" / "requirements.txt"
+REQ_FILES   = [
+    ROOT / "mc_database" / "requirements.txt",  # API + auth
+    ROOT / "mc_engine"   / "requirements.txt",  # live scorer + AI models
+]
 LOG_FILE    = ROOT / "magic_click_install.log"
 LOCK_FILE   = Path(tempfile.gettempdir()) / "magic_click_install.lock"
 
@@ -315,8 +318,10 @@ def _run(cmd: list, cwd=None, capture=True):
 
 def _pip_install(extra_flags: list, gui: InstallerGUI, attempt: int) -> bool:
     gui.append_log(f"  pip install (attempt {attempt}/{MAX_RETRIES})…")
-    cmd = [str(VENV_PIP), "install", "-r", str(REQ_FILE),
-           "--quiet", "--no-warn-script-location"] + extra_flags
+        cmd = [str(VENV_PIP), "install", "--quiet", "--no-warn-script-location"] + extra_flags
+        for req in REQ_FILES:
+            if req.exists():
+                cmd += ["-r", str(req)]
     rc, out = _run(cmd)
     for line in out.splitlines():
         if line.strip(): gui.append_log(f"    {line}")
