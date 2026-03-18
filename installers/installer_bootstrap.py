@@ -318,10 +318,10 @@ def _run(cmd: list, cwd=None, capture=True):
 
 def _pip_install(extra_flags: list, gui: InstallerGUI, attempt: int) -> bool:
     gui.append_log(f"  pip install (attempt {attempt}/{MAX_RETRIES})…")
-        cmd = [str(VENV_PIP), "install", "--quiet", "--no-warn-script-location"] + extra_flags
-        for req in REQ_FILES:
-            if req.exists():
-                cmd += ["-r", str(req)]
+    cmd = [str(VENV_PIP), "install", "--quiet", "--no-warn-script-location"] + extra_flags
+    for req in REQ_FILES:
+        if req.exists():
+            cmd += ["-r", str(req)]
     rc, out = _run(cmd)
     for line in out.splitlines():
         if line.strip(): gui.append_log(f"    {line}")
