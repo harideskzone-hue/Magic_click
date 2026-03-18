@@ -10,11 +10,16 @@ except ImportError:
 
 DEBUG = True     # set True to enable debug prints across the pipeline
 
+# ── Locate the mc_engine root regardless of working directory ──────────────────
+import os as _os
+_ENGINE_ROOT = _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))
+_MODELS = _os.path.join(_ENGINE_ROOT, "models")
+
 MODELS = {
-    "person_detector":  "models/yolo26n.pt",
-    "face_detector":    "models/yolo26n-face.pt",
-    "face_landmarker":  "models/face_landmarker.task",      # FULL model, not lite
-    "pose_landmarker":  "models/pose_landmarker_full.task",
+    "person_detector":  _os.path.join(_MODELS, "yolo26n.pt"),
+    "face_detector":    _os.path.join(_MODELS, "yolo26n-face.pt"),
+    "face_landmarker":  _os.path.join(_MODELS, "face_landmarker.task"),
+    "pose_landmarker":  _os.path.join(_MODELS, "pose_landmarker_full.task"),
 }
 
 DETECTION = {

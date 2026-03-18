@@ -435,6 +435,28 @@ def run_setup(gui: BootstrapGUI):
                 )
                 return
 
+        # ── Download required AI model files if missing ────────────────────
+        models_dir = os.path.join(SCRIPT_DIR, "mc_engine", "models")
+        os.makedirs(models_dir, exist_ok=True)
+        MODEL_URLS = {
+            "yolo26n-face.pt":           "https://github.com/akanametov/yolo-face/releases/download/v1.0.0/yolo26n-face.pt",
+            "face_landmarker.task":      "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task",
+            "pose_landmarker_full.task": "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_full/float16/1/pose_landmarker_full.task",
+        }
+        for fname, url in MODEL_URLS.items():
+            dest = os.path.join(models_dir, fname)
+            if not os.path.exists(dest):
+                gui.update_status(f"Downloading {fname}…", "One-time model download")
+                gui.set_progress(90)
+                log.info("Downloading model: %s → %s", url, dest)
+                run_cmd(
+                    [VENV_PYTHON, "-c",
+                     f"import urllib.request; urllib.request.urlretrieve('{url}', '{dest}')"],
+                    f"Downloading {fname}…", 90, 95,
+                )
+            else:
+                log.info("Model already present: %s", fname)
+
         # ── Stage 2: launch ────────────────────────────────────────────────────
         gui.set_stage(2)
         gui.update_status("All done! Launching the pipeline…", "Opening dashboard…")
