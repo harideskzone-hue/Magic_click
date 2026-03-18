@@ -60,6 +60,16 @@
                     <span class="material-symbols-outlined theme-icon-light hidden">light_mode</span>
                     <span class="material-symbols-outlined theme-icon-dark">dark_mode</span>
                 </button>
+                <button onclick="doLogout()"
+                    class="text-[11px] font-semibold px-3 py-1.5 rounded-lg border border-gray-200 dark:border-white/20 text-text-secondary dark:text-white/70 hover:bg-gray-100 dark:hover:bg-white/10 transition-colors"
+                    title="Sign out">
+                    Sign Out
+                </button>
+                <button onclick="confirmShutdown()"
+                    class="text-[11px] font-semibold px-3 py-1.5 rounded-lg bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-500/30 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors"
+                    title="Stop the entire pipeline">
+                    ⏻ Shutdown
+                </button>
             </div>
         </div>
     </header>
@@ -110,9 +120,58 @@
                 </div>
             </div>
         </section>
+
+        <!-- ── Camera Management ────────────────────────────────────────── -->
+        <section>
+            <div class="bg-surface-white dark:bg-surface-dark rounded-xl p-8 border border-gray-100/30 dark:border-white/30">
+                <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-6 border-b border-gray-50 dark:border-white/30 pb-4">
+                    <div>
+                        <h2 class="text-[11px] font-bold text-primary dark:text-white uppercase tracking-[0.2em]">Camera Management</h2>
+                        <p class="text-text-tertiary text-xs mt-1">Add, configure, or remove camera sources. Changes apply automatically within 10 s.</p>
+                    </div>
+                    <span id="cam-count-badge"
+                        class="text-[9px] font-bold text-primary dark:text-white uppercase bg-blue-50 dark:bg-white/10 px-3 py-1 rounded">
+                        — cameras
+                    </span>
+                </div>
+
+                <!-- Camera list -->
+                <div id="cam-list" class="space-y-2 mb-6"></div>
+
+                <!-- Add Camera Form -->
+                <div class="border-t border-gray-100 dark:border-white/20 pt-5">
+                    <p class="text-[10px] font-bold text-text-secondary dark:text-white/60 uppercase tracking-widest mb-3">Add Camera</p>
+                    <div class="flex flex-wrap gap-3 items-end">
+                        <div class="flex-1 min-w-[140px]">
+                            <label class="text-[9px] font-bold text-text-tertiary uppercase tracking-wider block mb-1">Label</label>
+                            <input id="cam-label" type="text" placeholder="e.g. Front Door"
+                                class="w-full text-sm px-3 py-2 rounded-lg border border-gray-200 dark:border-white/20 bg-gray-50 dark:bg-white/5 text-text-primary dark:text-white focus:outline-none focus:border-primary dark:focus:border-white">
+                        </div>
+                        <div class="flex-1 min-w-[180px]">
+                            <label class="text-[9px] font-bold text-text-tertiary uppercase tracking-wider block mb-1">Source <span class="font-normal normal-case">(0 = USB, rtsp://… = IP)</span></label>
+                            <input id="cam-source" type="text" placeholder="0 or rtsp://192.168.1.x:554/..."
+                                class="w-full text-sm px-3 py-2 rounded-lg border border-gray-200 dark:border-white/20 bg-gray-50 dark:bg-white/5 text-text-primary dark:text-white focus:outline-none focus:border-primary dark:focus:border-white font-mono">
+                        </div>
+                        <div class="flex gap-2">
+                            <button onclick="testCamera()"
+                                class="px-4 py-2 text-xs font-semibold rounded-lg border border-primary dark:border-white text-primary dark:text-white hover:bg-blue-50 dark:hover:bg-white/10 transition-colors">
+                                Test
+                            </button>
+                            <button onclick="addCamera()"
+                                class="px-5 py-2 text-xs font-semibold rounded-lg bg-primary dark:bg-white text-white dark:text-primary hover:opacity-90 transition-opacity">
+                                Add Camera
+                            </button>
+                        </div>
+                    </div>
+                    <p id="cam-msg" class="text-xs mt-2 hidden"></p>
+                </div>
+            </div>
+        </section>
+
         <section class="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div
                 class="bg-surface-white dark:bg-surface-dark rounded-lg px-6 py-5 border border-gray-100/30 dark:border-gray-700 flex items-center justify-between shadow-sm hover:shadow-none transition-shadow">
+
                 <div class="flex gap-4 items-center">
                     <div class="p-2 bg-gray-50 dark:bg-white/10 rounded-md">
                         <span
@@ -251,17 +310,142 @@
     </nav>
 
     <script>
-        // Load live stats from /api/health
-        fetch('/api/health')
-            .then(r => r.json())
-            .then(data => {
-                document.getElementById('stat-persons').textContent = data.person_count ?? '—';
-                document.getElementById('stat-images').textContent = data.vector_count ?? '—';
-            })
-            .catch(() => {});
+        // ── Live Pipeline Stats ───────────────────────────────────────────────
+        // Auto-poll /api/health every 8 seconds so stats update as the
+        // capture → scoring → upload pipeline adds new faces and images.
+        function refreshStats() {
+            fetch('/api/health')
+                .then(r => r.json())
+                .then(data => {
+                    document.getElementById('stat-persons').textContent = data.person_count ?? '—';
+                    document.getElementById('stat-images').textContent = data.vector_count ?? '—';
+                })
+                .catch(() => {});
+        }
+        refreshStats();                      // immediate first load
+        setInterval(refreshStats, 8000);     // then every 8 s
     </script>
     <script>
-            (function () {
+        // ── Camera Management Logic ───────────────────────────────────────────
+        
+        async function fetchCameras() {
+            try {
+                const res = await fetch('/api/cameras');
+                if (!res.ok) return;
+                const data = await res.json();
+                renderCameras(data.cameras || []);
+            } catch (e) { console.error('Failed to fetch cameras', e); }
+        }
+
+        function renderCameras(cameras) {
+            const list = document.getElementById('cam-list');
+            const badge = document.getElementById('cam-count-badge');
+            badge.textContent = `${cameras.length} camera${cameras.length !== 1 ? 's' : ''}`;
+            
+            if (cameras.length === 0) {
+                list.innerHTML = `<div class="text-xs text-text-tertiary italic py-2">No cameras configured. Add one below.</div>`;
+                return;
+            }
+
+            list.innerHTML = cameras.map(cam => `
+                <div class="flex items-center justify-between p-3 rounded-lg border ${cam.enabled ? 'border-primary/20 bg-blue-50/30 dark:border-white/20 dark:bg-white/5' : 'border-gray-200 bg-gray-50 opacity-60 dark:border-white/10 dark:bg-white/5'} transition-all mb-2">
+                    <div class="flex items-center gap-3">
+                        <div class="${cam.enabled ? 'bg-green-500 animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.4)]' : 'bg-gray-300'} rounded-full" style="width: 8px; height: 8px; min-width: 8px;"></div>
+                        <div>
+                            <p class="text-xs font-semibold text-text-primary dark:text-white">${cam.label || cam.id}</p>
+                            <p class="text-[10px] text-text-tertiary font-mono mt-0.5">${cam.source}</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button onclick="toggleCam('${cam.id}', ${!cam.enabled})" class="text-[10px] uppercase font-bold px-2 py-1 rounded bg-white dark:bg-white/10 border border-gray-200 dark:border-white/20 hover:border-primary dark:hover:border-white transition-colors text-text-primary dark:text-white">
+                            ${cam.enabled ? 'Disable' : 'Enable'}
+                        </button>
+                        <button onclick="deleteCam('${cam.id}')" class="text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10 p-1 rounded transition-colors material-symbols-outlined text-[18px]">
+                            delete
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        async function toggleCam(id, enable) {
+            await fetch(`/api/cameras/${id}`, {
+                method: 'PUT',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({enabled: enable})
+            });
+            fetchCameras();
+        }
+
+        async function deleteCam(id) {
+            if (!confirm('Remove this camera?')) return;
+            await fetch(`/api/cameras/${id}`, { method: 'DELETE' });
+            fetchCameras();
+        }
+
+        function showCamMsg(msg, isError=false) {
+            const el = document.getElementById('cam-msg');
+            el.textContent = msg;
+            el.className = `text-xs mt-2 ${isError ? 'text-red-500' : 'text-green-600 dark:text-green-400'}`;
+            el.classList.remove('hidden');
+            setTimeout(() => el.classList.add('hidden'), 5000);
+        }
+
+        async function testCamera() {
+            const source = document.getElementById('cam-source').value.trim();
+            if (!source) return showCamMsg('Please enter a source to test', true);
+            
+            showCamMsg('Testing connection... (this may take a few seconds)');
+            try {
+                const res = await fetch('/api/cameras/test', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({source: source, label: '', enabled: true})
+                });
+                const data = await res.json();
+                if (data.success) {
+                    showCamMsg('✓ Connection successful!');
+                } else {
+                    showCamMsg(`✗ Test failed: ${data.error}`, true);
+                }
+            } catch (e) {
+                showCamMsg('✗ Test failed: Network error', true);
+            }
+        }
+
+        async function addCamera() {
+            const label = document.getElementById('cam-label').value.trim();
+            const source = document.getElementById('cam-source').value.trim();
+            if (!source) return showCamMsg('Please enter a camera source', true);
+
+            showCamMsg('Adding camera and verifying connection...');
+            try {
+                const res = await fetch('/api/cameras', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({source: source, label: label, enabled: true})
+                });
+                const data = await res.json();
+                
+                if (data.success) {
+                    document.getElementById('cam-label').value = '';
+                    document.getElementById('cam-source').value = '';
+                    showCamMsg('✓ Camera added successfully');
+                    fetchCameras();
+                } else {
+                    showCamMsg(`✗ Failed: ${data.error}`, true);
+                }
+            } catch (e) {
+                showCamMsg('✗ Failed to add camera: Network error', true);
+            }
+        }
+
+        // Initialize camera list and refresh periodically
+        fetchCameras();
+        setInterval(fetchCameras, 10000);
+
+        // ── Theme Logic ───────────────────────────────────────────────
+        (function () {
                 const themeToggleBtn = document.getElementById('theme-toggle');
                 const htmlRoot = document.documentElement;
                 const iconLight = document.querySelector('.theme-icon-light');
@@ -297,6 +481,60 @@
                     updateThemeUI();
                 });
             })();
+    </script>
+
+    <!-- ── Shutdown Overlay ──────────────────────────────────────────────── -->
+    <div id="shutdown-overlay"
+         style="display:none;position:fixed;inset:0;z-index:9999;
+                background:rgba(1,32,123,0.97);
+                flex-direction:column;align-items:center;justify-content:center;gap:16px">
+      <div style="font-size:3rem">⏻</div>
+      <h2 style="font-size:1.4rem;font-weight:700;color:#fff;font-family:Inter,sans-serif">
+        Shutting down Magic Click…
+      </h2>
+      <p style="color:rgba(255,255,255,0.6);font-size:0.9rem;font-family:Inter,sans-serif">
+        The camera and AI pipeline are stopping. You can close this window.
+      </p>
+    </div>
+
+    <!-- ── Auth Action Scripts ──────────────────────────────────────────── -->
+    <script>
+      /* Fetch a CSRF token from the server (session must be valid) */
+      async function getCsrfToken() {
+        try {
+          const r = await fetch('/api/csrf', { credentials: 'same-origin' });
+          if (!r.ok) return '';
+          const d = await r.json();
+          return d.token || '';
+        } catch { return ''; }
+      }
+
+      /* ⏻  Shutdown: confirm → POST /api/shutdown */
+      async function confirmShutdown() {
+        if (!confirm('⏻  Shut down Magic Click?\n\nThis will stop the camera, AI pipeline, and close the server.')) return;
+        const overlay = document.getElementById('shutdown-overlay');
+        overlay.style.display = 'flex';
+        try {
+          const csrf = await getCsrfToken();
+          const fd = new FormData();
+          fd.append('csrf_token', csrf);
+          await fetch('/api/shutdown', { method: 'POST', body: fd, credentials: 'same-origin' });
+        } catch { /* server going down — expected */ }
+      }
+
+      /* 🚪 Logout: POST /auth/logout → redirect to /login */
+      async function doLogout() {
+        try {
+          const csrf = await getCsrfToken();
+          const fd = new FormData();
+          fd.append('csrf_token', csrf);
+          const r = await fetch('/auth/logout', { method: 'POST', body: fd, credentials: 'same-origin' });
+          const d = await r.json().catch(() => ({}));
+          window.location.href = d.redirect || '/login';
+        } catch {
+          window.location.href = '/login';
+        }
+      }
     </script>
 </body>
 

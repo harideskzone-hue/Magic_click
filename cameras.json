@@ -1,0 +1,8 @@
+[
+  {
+    "id": "cam0",
+    "source": "0",
+    "label": "USB Webcam",
+    "enabled": true
+  }
+]

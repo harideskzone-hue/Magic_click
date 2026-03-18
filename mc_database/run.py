@@ -1,41 +1,143 @@
 """
-Face Embedding Database
-FastAPI application entry point.
+Face Embedding Database — FastAPI entry point (v2 + Auth)
+=========================================================
+New in this version
+-------------------
+* SessionMiddleware   — signed-cookie sessions (itsdangerous)
+* /login              — serve login page (no auth required)
+* /auth/setup         — first-run password creation (POST)
+* /auth/login         — password authentication  (POST)
+* /auth/logout        — clear session            (POST)
+* /api/shutdown       — graceful pipeline shutdown (auth required)
+* CSRF validation     — all state-changing POSTs require X-CSRF-Token
+* Session expiry      — sessions expire after 8 hours of inactivity
+* /api/health stays public so ui_launcher.py can poll it
 """
-import uvicorn
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse, Response
 
-from app.api.routes import api
-from app.config import HOST, PORT, DEBUG, BASE_DIR
+import os
+import sys
+import logging
+import signal
+import subprocess
+import threading
+import time
+
+import uvicorn  # type: ignore
+from fastapi import FastAPI, Request, Form  # type: ignore
+from fastapi.middleware.cors import CORSMiddleware  # type: ignore
+from fastapi.staticfiles import StaticFiles  # type: ignore
+from fastapi.responses import (  # type: ignore
+    FileResponse, JSONResponse, RedirectResponse, HTMLResponse
+)
+from starlette.middleware.sessions import SessionMiddleware  # type: ignore
+
+from app.api.routes import api  # type: ignore
+from app.config import HOST, PORT, DEBUG, BASE_DIR  # type: ignore
+from app.auth import (  # type: ignore
+    is_setup_complete, load_credentials, save_credentials,
+    hash_password, verify_password,
+    is_session_valid, create_session, clear_session,
+    generate_csrf_token, validate_csrf,
+)
+
+# ── Logging ────────────────────────────────────────────────────────────────────
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(name)s] %(levelname)s: %(message)s",
+    datefmt="%H:%M:%S",
+)
+logging.getLogger("face_service").setLevel(logging.DEBUG)
+logging.getLogger("vector_db").setLevel(logging.DEBUG)
+log = logging.getLogger("auth")
+
+# ── Session secret key (generated once per install) ────────────────────────────
+_SECRET_FILE = os.path.join(BASE_DIR, "data", ".session_secret")
+os.makedirs(os.path.join(BASE_DIR, "data"), exist_ok=True)
+if not os.path.exists(_SECRET_FILE):
+    import secrets as _sec
+    with open(_SECRET_FILE, "w") as _f:
+        _f.write(_sec.token_hex(32))
+with open(_SECRET_FILE) as _f:
+    SESSION_SECRET = _f.read().strip()
+
+# ── Helper: public routes that skip auth ──────────────────────────────────────
+PUBLIC_PATHS = {"/login", "/auth/login", "/auth/setup", "/api/health", "/favicon.ico"}
+
+def _is_public(path: str) -> bool:
+    return path in PUBLIC_PATHS or path.startswith("/static/")
+
+NO_CACHE = {"Cache-Control": "no-store, no-cache, must-revalidate", "Pragma": "no-cache"}
+
+
+# ── App Factory ────────────────────────────────────────────────────────────────
 
 def create_app() -> FastAPI:
-    """Create and configure the FastAPI application."""
     app = FastAPI(
-        title="Face Embedding Database",
-        version="2.0.0",
-        description="FastAPI service for face embeddings and search"
+        title="Magic Click — Face Database",
+        version="2.1.0",
+        description="FastAPI service with authentication",
     )
-    
-    # Enable CORS
+
+    # ── Auth Guard Middleware ─────────────────────────────────────────────────
+    # IMPORTANT: @app.middleware("http") decorators run OUTERMOST (first) in
+    # Starlette's middleware stack — i.e. before any add_middleware() calls.
+    # SessionMiddleware and CORS must therefore be added AFTER this decorator
+    # so they wrap on the outside and execute first.
+    @app.middleware("http")
+    async def auth_guard(request: Request, call_next):
+        path = request.url.path
+        if _is_public(path):
+            return await call_next(request)
+
+        if not is_session_valid(request.session):
+            if path.startswith("/api/"):
+                return JSONResponse(
+                    {"error": "Authentication required", "code": 401},
+                    status_code=401,
+                )
+            return RedirectResponse("/login", status_code=303)
+
+        return await call_next(request)
+
+    # ── CORS (added after auth_guard → wraps outside auth_guard → runs before it) ─
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],
+        allow_origins=["http://localhost", f"http://localhost:{PORT}"],
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
     )
-    
-    # Register API router
+
+    # ── Session Middleware (added LAST → outermost → runs FIRST, sets up session) ─
+    app.add_middleware(
+        SessionMiddleware,
+        secret_key=SESSION_SECRET,
+        session_cookie="mc_session",
+        max_age=8 * 3600,
+        same_site="strict",
+        https_only=False,
+    )
+
+    # ── Register API router ────────────────────────────────────────────────────
     app.include_router(api)
-    
-    # Mount static files
+
+    # ── Static files ──────────────────────────────────────────────────────────
     app.mount("/static", StaticFiles(directory=f"{BASE_DIR}/app/static"), name="static")
-    
-    # Serve frontend templates
-    NO_CACHE = {"Cache-Control": "no-store, no-cache, must-revalidate", "Pragma": "no-cache"}
+
+    # ──────────────────────────────────────────────────────────────────────────
+    # HTML routes
+    # ──────────────────────────────────────────────────────────────────────────
+
+    @app.get("/login", response_class=HTMLResponse)
+    async def serve_login(request: Request):
+        if is_session_valid(request.session):
+            return RedirectResponse("/", status_code=303)
+        csrf = generate_csrf_token(request.session)
+        # Inject CSRF + first_run flag into HTML
+        tmpl = open(f"{BASE_DIR}/templates/login.html").read()
+        tmpl = tmpl.replace("__CSRF_TOKEN__", csrf)
+        tmpl = tmpl.replace("__FIRST_RUN__", "true" if not is_setup_complete() else "false")
+        return HTMLResponse(tmpl, headers=NO_CACHE)
 
     @app.get("/")
     async def serve_dashboard():
@@ -44,34 +146,136 @@ def create_app() -> FastAPI:
     @app.get("/camera")
     async def serve_camera():
         return FileResponse(f"{BASE_DIR}/templates/camera.html", headers=NO_CACHE)
-    
+
     @app.get("/upload")
     async def serve_upload():
         return FileResponse(f"{BASE_DIR}/templates/upload.html", headers=NO_CACHE)
-    
+
+    # ──────────────────────────────────────────────────────────────────────────
+    # Auth endpoints
+    # ──────────────────────────────────────────────────────────────────────────
+
+    @app.post("/auth/setup")
+    async def auth_setup(
+        request: Request,
+        password: str = Form(...),
+        confirm:  str = Form(...),
+        csrf:     str = Form(alias="csrf_token", default=""),
+    ):
+        """First-run: user sets their admin password."""
+        if is_setup_complete():
+            return JSONResponse({"error": "Already configured"}, status_code=400)
+
+        if not validate_csrf(request.session, csrf):
+            log.warning("CSRF mismatch on /auth/setup")
+            return JSONResponse({"error": "Invalid CSRF token"}, status_code=403)
+
+        if len(password) < 6:
+            return JSONResponse(
+                {"error": "Password must be at least 6 characters"}, status_code=400
+            )
+        if password != confirm:
+            return JSONResponse({"error": "Passwords do not match"}, status_code=400)
+
+        save_credentials(hash_password(password))
+        create_session(request.session)
+        log.info("First-run password set. Session created.")
+        return JSONResponse({"success": True, "redirect": "/"})
+
+    @app.post("/auth/login")
+    async def auth_login(
+        request:  Request,
+        password: str = Form(...),
+        csrf:     str = Form(alias="csrf_token", default=""),
+    ):
+        """Verify password and create session."""
+        if not validate_csrf(request.session, csrf):
+            log.warning("CSRF mismatch on /auth/login from %s", request.client)
+            return JSONResponse({"error": "Invalid CSRF token"}, status_code=403)
+
+        creds = load_credentials()
+        if not creds or not verify_password(password, creds.get("password_hash", "")):
+            log.warning("Failed login attempt from %s", request.client)
+            # Rate-limit hint (don't reveal what was wrong)
+            time.sleep(1)
+            return JSONResponse(
+                {"error": "Incorrect password. Please try again."}, status_code=401
+            )
+
+        create_session(request.session)
+        log.info("Successful login from %s", request.client)
+        return JSONResponse({"success": True, "redirect": "/"})
+
+    @app.post("/auth/logout")
+    async def auth_logout(
+        request: Request,
+        csrf:    str = Form(alias="csrf_token", default=""),
+    ):
+        """Clear session."""
+        if not validate_csrf(request.session, csrf):
+            return JSONResponse({"error": "Invalid CSRF token"}, status_code=403)
+        clear_session(request.session)
+        log.info("User logged out.")
+        return JSONResponse({"success": True, "redirect": "/login"})
+
+    @app.post("/api/shutdown")
+    async def api_shutdown(
+        request: Request,
+        csrf:    str = Form(alias="csrf_token", default=""),
+    ):
+        """
+        Gracefully terminate the entire Magic Click pipeline.
+        Requires an active session + valid CSRF token.
+        """
+        if not validate_csrf(request.session, csrf):
+            return JSONResponse({"error": "Invalid CSRF token"}, status_code=403)
+
+        log.info("Shutdown requested by authenticated user.")
+
+        def _shutdown():
+            time.sleep(1.5)
+            # Send SIGTERM to the parent process group (ui_launcher.py started us)
+            try:
+                pgid = os.getpgid(os.getpid())
+                os.killpg(pgid, signal.SIGTERM)
+            except Exception:
+                pass
+            # Fallback: kill self
+            os.kill(os.getpid(), signal.SIGTERM)
+
+        threading.Thread(target=_shutdown, daemon=True).start()
+        return JSONResponse({"success": True, "message": "Shutting down Magic Click…"})
+
+    # ── Info ──────────────────────────────────────────────────────────────────
     @app.get("/info")
     async def api_info():
         return {
-            'name': 'Face Embedding Database',
-            'version': '2.0.0',
-            'framework': 'FastAPI',
-            'endpoints': {
-                'search': 'GET /api/search?img=<base64> | ?id=<id> | ?name=<name>',
-                'add': 'POST /api/add',
-                'name': 'POST /api/name',
-                'topn': 'GET /api/topn',
-                'health': 'GET /api/health',
-                'get_person': 'GET /api/person/<id>',
-                'delete_person': 'DELETE /api/person/<id>'
-            }
+            "name": "Magic Click — Face Database",
+            "version": "2.1.0",
+            "endpoints": {
+                "dashboard": "GET /",
+                "login":     "GET /login",
+                "logout":    "POST /auth/logout",
+                "shutdown":  "POST /api/shutdown",
+                "health":    "GET /api/health  (public)",
+                "search":    "POST /api/search",
+                "add":       "POST /api/add",
+                "topn":      "GET  /api/topn",
+            },
         }
-        
+
+    @app.get("/api/csrf")
+    async def get_csrf_token(request: Request):
+        """Return a CSRF token for the current session (used by dashboard JS)."""
+        return {"token": generate_csrf_token(request.session)}
+
     return app
+
 
 app = create_app()
 
-if __name__ == '__main__':
-    print(f"\n🚀 Starting Face Embedding Database API (FastAPI)...")
+if __name__ == "__main__":
+    print(f"\n🚀 Starting Magic Click API (FastAPI, auth enabled)…")
     print(f"📍 Running on http://{HOST}:{PORT}")
     print(f"📚 API docs at http://localhost:{PORT}/docs\n")
     uvicorn.run("run:app", host=HOST, port=PORT, reload=DEBUG)

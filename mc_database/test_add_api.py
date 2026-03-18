@@ -1,8 +1,8 @@
 
-import requests
+import requests  # type: ignore # pyre-ignore # pyright: ignore
 import base64
-import cv2
-import numpy as np
+import cv2  # type: ignore # pyre-ignore # pyright: ignore
+import numpy as np  # type: ignore # pyre-ignore # pyright: ignore
 
 # Create a dummy image (random noise or solid color)
 # Using white image to ensure detection if we were using a real detector, 

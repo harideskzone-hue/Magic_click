@@ -1,0 +1,62 @@
+#!/bin/bash
+# preinstall — runs BEFORE files are copied by the .pkg installer
+# Checks: macOS version, disk space, Python availability, internet
+set -e
+
+INSTALL_PATH="/Applications/MagicClick"
+MIN_FREE_GB=3
+LOG="/tmp/magic_click_preinstall.log"
+
+log() { echo "[$(date '+%H:%M:%S')] $*" | tee -a "$LOG"; }
+fail() { log "FATAL: $*"; exit 1; }
+
+log "=== Magic Click Pre-Install Check ==="
+log "macOS: $(sw_vers -productVersion)"
+
+# macOS >= 12 check
+MACOS_MAJOR=$(sw_vers -productVersion | cut -d. -f1)
+[ "$MACOS_MAJOR" -ge 12 ] || fail "macOS 12 (Monterey) or newer required. You have $(sw_vers -productVersion)."
+log "✓ macOS version OK"
+
+# Python 3.10+ check
+PYTHON=$(command -v python3 2>/dev/null || command -v python 2>/dev/null || echo "")
+if [ -z "$PYTHON" ]; then
+    osascript -e 'display alert "Python Not Found" message "Python 3.10 or newer is required.\n\nPlease install Python from:\nhttps://www.python.org/downloads/\n\nThen run the installer again." as critical'
+    fail "Python not found"
+fi
+
+PY_VER=$("$PYTHON" -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')" 2>/dev/null || echo "0.0")
+PY_MAJOR=$(echo "$PY_VER" | cut -d. -f1)
+PY_MINOR=$(echo "$PY_VER" | cut -d. -f2)
+if [ "$PY_MAJOR" -lt 3 ] || { [ "$PY_MAJOR" -eq 3 ] && [ "$PY_MINOR" -lt 10 ]; }; then
+    osascript -e "display alert \"Python $PY_VER is too old\" message \"Magic Click requires Python 3.10 or newer.\n\nYou have Python $PY_VER.\n\nPlease install a newer version from:\nhttps://www.python.org/downloads/\" as critical"
+    fail "Python $PY_VER too old"
+fi
+log "✓ Python $PY_VER OK"
+
+# Disk space check
+FREE_BYTES=$(df -k "$HOME" | awk 'NR==2 {print $4}')
+FREE_GB=$(echo "scale=1; $FREE_BYTES / 1048576" | bc 2>/dev/null || echo "10")
+if (( $(echo "$FREE_GB < $MIN_FREE_GB" | bc -l) )); then
+    osascript -e "display alert \"Not Enough Disk Space\" message \"Magic Click requires at least ${MIN_FREE_GB} GB of free space.\n\nYou have ${FREE_GB} GB available.\n\nPlease free up some space and try again.\" as critical"
+    fail "Insufficient disk space: ${FREE_GB} GB free"
+fi
+log "✓ Disk space OK (${FREE_GB} GB free)"
+
+# Internet connectivity check
+if ! nc -zw3 8.8.8.8 53 2>/dev/null; then
+    CHOICE=$(osascript -e 'button returned of (display alert "No Internet Connection" message "Magic Click needs internet access for one-time setup to download AI models (~500 MB).\n\nPlease connect to Wi-Fi or Ethernet and try again." buttons {"Cancel", "Continue Anyway"} default button "Cancel")')
+    [ "$CHOICE" = "Continue Anyway" ] || fail "No internet — user cancelled"
+    log "⚠ No internet — user chose to continue anyway"
+else
+    log "✓ Internet OK"
+fi
+
+# Remove quarantine from existing install if upgrading
+if [ -d "$INSTALL_PATH" ]; then
+    xattr -dr com.apple.quarantine "$INSTALL_PATH" 2>/dev/null || true
+    log "✓ Quarantine cleared from existing install"
+fi
+
+log "=== Pre-install checks passed ==="
+exit 0

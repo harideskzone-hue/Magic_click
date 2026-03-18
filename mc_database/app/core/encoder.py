@@ -2,9 +2,9 @@
 Face Encoder Module
 Handles face detection, alignment, and embedding extraction using InsightFace.
 """
-import numpy as np
-import cv2
-from insightface.app import FaceAnalysis
+import numpy as np  # type: ignore
+import cv2  # type: ignore
+from insightface.app import FaceAnalysis  # type: ignore
 
 
 class FaceEncoder:
@@ -16,10 +16,10 @@ class FaceEncoder:
         Using antelopev2 for better accuracy across diverse skin tones.
         """
         self.app = FaceAnalysis(
-            name='antelopev2',  # Better for diverse skin tones than buffalo_l
+            name='buffalo_sc',  # Lightweight model that auto-downloads (~14MB)
             providers=['CPUExecutionProvider']
         )
-        self.app.prepare(ctx_id=-1, det_size=(640, 640))
+        self.app.prepare(ctx_id=-1, det_size=(320, 320))
     
     def detect_and_encode(self, image: np.ndarray) -> tuple[np.ndarray | None, dict | None]:
         """

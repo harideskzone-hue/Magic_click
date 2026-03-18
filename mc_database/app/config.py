@@ -1,6 +1,4 @@
-"""
-Face Embedding Database Configuration
-"""
+"""\nFace Embedding Database Configuration\n"""
 import os
 
 # Base directories
@@ -18,10 +16,17 @@ SQLITE_PATH = os.path.join(DB_DIR, 'metadata.db')
 FAISS_INDEX_PATH = os.path.join(DB_DIR, 'faiss.index')
 
 # Face matching settings
-SIMILARITY_THRESHOLD = 0.6  # Minimum similarity to consider a match
+# buffalo_sc cosine similarity: same-person typically 0.25-0.55, strangers ~0.05-0.25
+# Use 0.30 so a face captured from different angles still merges into one person.
+# Override with env var: MC_SIMILARITY_THRESHOLD=0.35
+SIMILARITY_THRESHOLD: float = float(os.environ.get('MC_SIMILARITY_THRESHOLD', '0.30'))
+
+# Minimum face detection confidence accepted by encoder
+MIN_DET_SCORE: float = float(os.environ.get('MC_MIN_DET_SCORE', '0.50'))
+
 EMBEDDING_DIM = 512  # InsightFace embedding dimension
 
 # Server settings
 HOST = '0.0.0.0'
-PORT = 5000
+PORT = 5001
 DEBUG = True

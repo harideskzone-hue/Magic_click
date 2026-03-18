@@ -1,0 +1,49 @@
+#!/bin/bash
+# postinstall — runs AFTER files are copied by the .pkg installer
+# Launches installer_bootstrap.py to set up the venv and dependencies
+set -e
+
+INSTALL_PATH="/Applications/MagicClick"
+LOG="/tmp/magic_click_postinstall.log"
+
+log() { echo "[$(date '+%H:%M:%S')] $*" | tee -a "$LOG"; }
+
+log "=== Magic Click Post-Install ==="
+log "Install path: $INSTALL_PATH"
+
+# Strip quarantine from all installed files
+xattr -dr com.apple.quarantine "$INSTALL_PATH" 2>/dev/null || true
+log "✓ Quarantine attribute cleared"
+
+# Make all shell scripts executable
+chmod +x "$INSTALL_PATH/launchers/macos/MagicClick.command" 2>/dev/null || true
+chmod +x "$INSTALL_PATH/launchers/macos/build_app.sh" 2>/dev/null || true
+chmod +x "$INSTALL_PATH/launchers/linux/install.sh" 2>/dev/null || true
+chmod +x "$INSTALL_PATH/installers/macos/scripts/"* 2>/dev/null || true
+
+# Find python3
+PYTHON=$(command -v python3 2>/dev/null)
+[ -n "$PYTHON" ] || { log "FATAL: python3 not found"; exit 1; }
+
+# Build the .app bundle
+log "▶  Building MagicClick.app…"
+cd "$INSTALL_PATH"
+bash launchers/macos/build_app.sh >> "$LOG" 2>&1 || log "⚠ .app build had warnings (non-fatal)"
+log "✓ MagicClick.app ready"
+
+# Copy .app to /Applications root for easy access
+APP_SRC="$INSTALL_PATH/launchers/macos/MagicClick.app"
+APP_DEST="/Applications/MagicClick.app"
+if [ -d "$APP_SRC" ]; then
+    cp -R "$APP_SRC" "$APP_DEST" 2>/dev/null || true
+    xattr -dr com.apple.quarantine "$APP_DEST" 2>/dev/null || true
+    log "✓ MagicClick.app copied to /Applications/"
+fi
+
+# Launch installer_bootstrap.py in the background (shows premium GUI)
+log "▶  Launching installer_bootstrap.py…"
+"$PYTHON" "$INSTALL_PATH/installers/installer_bootstrap.py" \
+    >> "$LOG" 2>&1 &
+
+log "=== Post-install script complete (bootstrap running in background) ==="
+exit 0

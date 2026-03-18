@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<style>
+  body {
+    font-family: -apple-system, 'Helvetica Neue', Arial, sans-serif;
+    background: #F4F7FE;
+    color: #01207B;
+    padding: 28px 36px;
+    margin: 0;
+    font-size: 13px;
+    line-height: 1.6;
+  }
+  h1 { font-size: 1.6rem; font-weight: 700; margin: 0 0 6px; }
+  .sub { color: #64748b; font-size: 0.85rem; margin-bottom: 22px; }
+  .card {
+    background: #fff;
+    border: 1px solid rgba(1,32,123,0.12);
+    border-radius: 12px;
+    padding: 16px 20px;
+    margin-bottom: 14px;
+  }
+  .card h2 { font-size: 0.85rem; font-weight: 700; margin: 0 0 6px; }
+  .card p  { margin: 0; color: #334155; font-size: 0.82rem; }
+  .warn {
+    background: #FFF7ED;
+    border-color: rgba(234,88,12,0.25);
+  }
+  .warn h2 { color: #C2410C; }
+  .step {
+    display: flex; gap: 10px; margin-bottom: 8px;
+    align-items: flex-start;
+  }
+  .num {
+    min-width: 22px; height: 22px; border-radius: 50%;
+    background: #01207B; color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.72rem; font-weight: 700; margin-top: 2px;
+  }
+</style>
+</head>
+<body>
+
+<h1>⚡ Magic Click 2.0</h1>
+<p class="sub">AI-powered vision system — One-click installer</p>
+
+<div class="card">
+  <h2>📋 What This Installer Does</h2>
+  <p>
+    Installs Magic Click to <strong>/Applications/MagicClick</strong> and
+    automatically sets up all AI packages and models in a private environment.
+    Your existing software is not affected.
+  </p>
+</div>
+
+<div class="card">
+  <h2>🌐 Internet Required for First-Time Setup</h2>
+  <p>
+    The installer downloads AI models (~500 MB) from the internet.
+    <strong>Please connect to Wi-Fi before clicking Install.</strong><br>
+    After the first setup, Magic Click works offline.
+  </p>
+</div>
+
+<div class="card">
+  <h2>⏱ Estimated Setup Time</h2>
+  <p>
+    First run: <strong>5–15 minutes</strong> depending on your internet speed.<br>
+    All subsequent launches: <strong>under 10 seconds</strong>.
+  </p>
+</div>
+
+<div class="card warn">
+  <h2>🔒 macOS Security Warning</h2>
+  <p>
+    If macOS shows <em>"cannot be opened because the developer cannot be verified"</em>:
+  </p>
+  <div class="step">
+    <div class="num">1</div>
+    <div>Right-click <strong>MagicClick.pkg</strong> (or the .app later) → <strong>Open</strong></div>
+  </div>
+  <div class="step">
+    <div class="num">2</div>
+    <div>Click <strong>Open</strong> in the security dialog that appears</div>
+  </div>
+  <div class="step">
+    <div class="num">3</div>
+    <div>If the option doesn't appear: <strong>System Settings → Privacy &amp; Security</strong> → scroll down → click <strong>Open Anyway</strong></div>
+  </div>
+</div>
+
+</body>
+</html>

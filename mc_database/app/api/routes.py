@@ -4,14 +4,24 @@ New API structure: /search, /add, /name, /topn
 Refactored to use FaceService.
 """
 from typing import List, Optional
-from fastapi import APIRouter, UploadFile, Form, HTTPException, Body, Query, Request
-from fastapi.responses import JSONResponse, Response
-from pydantic import BaseModel
+from fastapi import APIRouter, UploadFile, Form, HTTPException, Body, Query, Request  # type: ignore
+from fastapi.responses import JSONResponse, Response  # type: ignore
+from pydantic import BaseModel  # type: ignore
+import os, json, uuid, tempfile, time, threading
 
-from app.services.face_service import FaceService
+from app.services.face_service import FaceService  # type: ignore
 
 api = APIRouter(prefix="/api")
 face_service = FaceService()
+
+# ── Shared cameras.json path ───────────────────────────────────────────────────
+# Stored at project root so both mc_database and Temp_MCv2 can read/write it.
+_CAMERAS_JSON = os.environ.get(
+    "CAMERAS_JSON_PATH",
+    os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))), "cameras.json")
+)
+MAX_CAMERAS = 4
+_cam_lock = threading.Lock()
 
 # Pydantic Models
 class BatchAddImage(BaseModel):
@@ -127,8 +137,8 @@ async def batch_add_images(request: BatchAddRequest):
         return JSONResponse({'success': False, 'error': 'List of images required'}, status_code=400)
     
     results = []
-    success_count = 0
-    fail_count = 0
+    success_count: int = 0
+    fail_count: int = 0
     
     print(f"DEBUG: Batch processing {len(images)} images...")
     
@@ -143,10 +153,10 @@ async def batch_add_images(request: BatchAddRequest):
             if name and result.get('person_id'):
                 face_service.assign_name(result['person_id'], name)
                 result['name_assigned'] = name
-            success_count += 1
+            success_count = success_count + 1  # type: ignore
         else:
             print(f"DEBUG: Batch item {i} failed: {result.get('error')}")
-            fail_count += 1
+            fail_count = fail_count + 1  # type: ignore
         
         results.append(result)
         
@@ -170,8 +180,8 @@ async def reset_database():
     # Implementation detail: I'll use the service deps pattern or imports. 
     # To follow Clean Code: add reset to service.
     try:
-        from app.core.storage import get_storage
-        from app.core.vector_db import get_vector_db
+        from app.core.storage import get_storage  # type: ignore
+        from app.core.vector_db import get_vector_db  # type: ignore
         storage = get_storage()
         vector_db = get_vector_db()
         storage.reset()
@@ -247,3 +257,163 @@ async def get_image(image_id: str):
         return JSONResponse({'success': False, 'error': 'Image not found'}, status_code=404)
     
     return Response(image_bytes, media_type='image/jpeg')
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Camera Management API
+# ══════════════════════════════════════════════════════════════════════════════
+
+class CameraEntry(BaseModel):
+    source: str           # "0", "1", "rtsp://...", etc.
+    label: str = ""
+    enabled: bool = True
+
+class CameraUpdate(BaseModel):
+    source: Optional[str] = None
+    label: Optional[str] = None
+    enabled: Optional[bool] = None
+
+
+def _read_cameras() -> list:
+    """Read cameras.json safely. Returns [] on any error."""
+    with _cam_lock:
+        try:
+            with open(_CAMERAS_JSON, 'r') as f:
+                data = json.load(f)
+            return data if isinstance(data, list) else []
+        except Exception:
+            return []
+
+
+def _write_cameras(cameras: list) -> None:
+    """
+    Write cameras.json atomically using write-to-temp-then-rename.
+    This prevents race conditions where live_scorer reads a half-written file.
+    """
+    dir_ = os.path.dirname(os.path.abspath(_CAMERAS_JSON))
+    with _cam_lock:
+        fd, tmp_path = tempfile.mkstemp(dir=dir_, suffix='.tmp')
+        try:
+            with os.fdopen(fd, 'w') as f:
+                json.dump(cameras, f, indent=2)
+            os.replace(tmp_path, _CAMERAS_JSON)   # atomic on POSIX
+        except Exception:
+            try:
+                os.unlink(tmp_path)
+            except Exception:
+                pass
+            raise
+
+
+def _validate_source(source: str) -> tuple[bool, str]:
+    """
+    Quick validation of a camera source without keeping the stream open.
+    Tries to open the stream, reads one frame, then releases immediately.
+    Returns (ok, error_message).
+    """
+    try:
+        import cv2  # type: ignore
+        src = int(source) if source.strip().lstrip('-').isdigit() else source.strip()
+        cap = cv2.VideoCapture(src)
+        opened = cap.isOpened()
+        if opened:
+            ret, _ = cap.read()
+            cap.release()
+            if not ret:
+                return False, f"Camera opened but could not read frame from '{source}'"
+            return True, ""
+        else:
+            cap.release()
+            return False, f"Could not open camera source '{source}'"
+    except ImportError:
+        return False, "opencv-python (cv2) not installed on server"
+    except Exception as e:
+        return False, str(e)
+
+
+@api.get('/cameras')
+async def list_cameras():
+    """Return all configured cameras."""
+    return JSONResponse({'success': True, 'cameras': _read_cameras()})
+
+
+@api.post('/cameras')
+async def add_camera(entry: CameraEntry):
+    """Add a new camera. Validates source before saving. Max 4 cameras."""
+    cameras = _read_cameras()
+    if len([c for c in cameras if c.get('enabled')]) >= MAX_CAMERAS:
+        return JSONResponse({'success': False,
+                             'error': f'Maximum of {MAX_CAMERAS} cameras supported'},
+                            status_code=400)
+
+    ok, err = _validate_source(entry.source)
+    if not ok:
+        return JSONResponse(
+            {'success': False, 'error': f'Source validation failed: {err}', 'source': entry.source},
+            status_code=400
+        )
+
+    # Using split avoiding slice syntax for strict type checker
+    raw_uuid = str(uuid.uuid4()).split('-')[0]
+    cam = {'id': f'cam_{raw_uuid}',
+            'source': entry.source,
+            'label': entry.label or f'Camera {len(cameras)}',
+            'enabled': entry.enabled}
+    cameras.append(cam)
+    _write_cameras(cameras)
+    return JSONResponse({'success': True, 'camera': cam})
+
+
+@api.put('/cameras/{cam_id}')
+async def update_camera(cam_id: str, update: CameraUpdate):
+    """Update source/label/enabled for a specific camera."""
+    cameras = _read_cameras()
+    cam = next((c for c in cameras if c['id'] == cam_id), None)
+    if cam is None:
+        return JSONResponse({'success': False, 'error': 'Camera not found'}, status_code=404)
+
+    src = update.source
+    if src is not None and src != cam['source']:
+        # Help Pyre2 infer that src is strictly str here
+        src_str: str = str(src)
+        ok, err = _validate_source(src_str)
+        if not ok:
+            return JSONResponse(
+                {'success': False, 'error': f'Source validation failed: {err}'},
+                status_code=400
+            )
+        cam['source'] = src_str
+
+    if update.label is not None:
+        cam['label'] = update.label
+    if update.enabled is not None:
+        cam['enabled'] = update.enabled
+
+    _write_cameras(cameras)
+    return JSONResponse({'success': True, 'camera': cam})
+
+
+@api.delete('/cameras/{cam_id}')
+async def delete_camera(cam_id: str):
+    """Remove a camera from the config. live_scorer will stop the stream within 10s."""
+    cameras = _read_cameras()
+    orig_len = len(cameras)
+    cameras = [c for c in cameras if c['id'] != cam_id]
+    if len(cameras) == orig_len:
+        return JSONResponse({'success': False, 'error': 'Camera not found'}, status_code=404)
+    _write_cameras(cameras)
+    return JSONResponse({'success': True, 'removed_id': cam_id})
+
+
+@api.post('/cameras/test')
+async def test_camera(entry: CameraEntry):
+    """
+    Test whether a camera source is reachable.
+    Does NOT save the camera — purely a connectivity check.
+    """
+    ok, err = _validate_source(entry.source)
+    if ok:
+        return JSONResponse({'success': True, 'source': entry.source,
+                             'message': 'Camera is reachable and streaming'})
+    return JSONResponse({'success': False, 'source': entry.source, 'error': err},
+                       status_code=400)
