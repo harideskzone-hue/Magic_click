@@ -3,7 +3,7 @@ import os as _os
 
 # Load .env from project root so BLUR_THRESHOLD and other env vars are available.
 try:
-    from dotenv import load_dotenv as _load_dotenv
+    from dotenv import load_dotenv as _load_dotenv  # type: ignore
     _load_dotenv(dotenv_path=_os.path.join(_os.path.dirname(__file__), "..", ".env"))
 except ImportError:
     pass
