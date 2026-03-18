@@ -3,6 +3,12 @@
 # Launches installer_bootstrap.py to set up the venv and dependencies
 set -e
 
+# Fix for "clang++: error: unable to make temporary file" during pip C++ compilation
+# The macOS Installer sandbox restricts standard temp directories for the root user.
+export TMPDIR=/tmp
+export TMP=/tmp
+export TEMP=/tmp
+
 INSTALL_PATH="/Applications/MagicClick"
 LOG="/tmp/magic_click_postinstall.log"
 
