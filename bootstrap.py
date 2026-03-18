@@ -329,7 +329,7 @@ def run_setup(gui: BootstrapGUI):
     """Runs in a background thread: creates venv, installs deps, launches."""
 
     mc_reqs       = os.path.join(SCRIPT_DIR, "mc_database", "requirements.txt")
-    pipeline_reqs = os.path.join(SCRIPT_DIR, "Temp_MCv2",   "requirements.txt")
+    pipeline_reqs = os.path.join(SCRIPT_DIR, "mc_engine",    "requirements.txt")
 
     # ── helper: run a command with retry ──────────────────────────────────────
     def run_cmd(cmd, stage_desc: str, start_pct: float, end_pct: float) -> int:

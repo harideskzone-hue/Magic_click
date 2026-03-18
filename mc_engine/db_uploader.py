@@ -6,7 +6,7 @@ SCORED frame, encodes it as base64, and POSTs it to mc_database /api/add.
 
 Called automatically by post_process_video.py — zero manual steps required.
 
-Configuration (optional, via Temp_MCv2/.env):
+Configuration (optional, via mc_engine/.env):
   MC_DATABASE_URL=http://localhost:5000   (default)
 """
 

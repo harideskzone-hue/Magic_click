@@ -18,7 +18,7 @@ import sys, os, json, base64, tempfile, time
 
 # Allow running from project root
 BASE = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, os.path.join(BASE, "Temp_MCv2"))
+sys.path.insert(0, os.path.join(BASE, "mc_engine"))
 
 import requests  # type: ignore
 

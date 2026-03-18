@@ -15,7 +15,7 @@ api = APIRouter(prefix="/api")
 face_service = FaceService()
 
 # ── Shared cameras.json path ───────────────────────────────────────────────────
-# Stored at project root so both mc_database and Temp_MCv2 can read/write it.
+# Stored at project root so both mc_database and mc_engine can read/write it.
 _CAMERAS_JSON = os.environ.get(
     "CAMERAS_JSON_PATH",
     os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))), "cameras.json")
