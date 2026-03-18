@@ -439,7 +439,7 @@ def run_setup(gui: BootstrapGUI):
         models_dir = os.path.join(SCRIPT_DIR, "mc_engine", "models")
         os.makedirs(models_dir, exist_ok=True)
         MODEL_URLS = {
-            "yolo26n-face.pt":           "https://github.com/akanametov/yolo-face/releases/download/v1.0.0/yolo26n-face.pt",
+            "yolo26n-face.pt":           "https://github.com/akanametov/yolo-face/releases/download/1.0.0/yolo26n-face.pt",
             "face_landmarker.task":      "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task",
             "pose_landmarker_full.task": "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_full/float16/1/pose_landmarker_full.task",
         }
