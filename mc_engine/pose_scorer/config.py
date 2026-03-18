@@ -15,6 +15,8 @@ import os as _os
 _ENGINE_ROOT = _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))
 _MODELS = _os.path.join(_ENGINE_ROOT, "models")
 
+DEBUG = True     # set True to enable debug prints across the pipeline
+
 MODELS = {
     "person_detector":  _os.path.join(_MODELS, "yolo26n.pt"),
     "face_detector":    _os.path.join(_MODELS, "yolo26n-face.pt"),
