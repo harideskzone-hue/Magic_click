@@ -12,12 +12,30 @@ function Write-Log { param($Msg) Add-Content $LogFile "[$(Get-Date -f 'HH:mm:ss'
 Write-Log "=== Python Check ==="
 
 # Check current Python
-$PyCmd = Get-Command python -ErrorAction SilentlyContinue
-if (-not $PyCmd) { $PyCmd = Get-Command python3 -ErrorAction SilentlyContinue }
+function Find-Python {
+    foreach ($cmd in @("python", "python3")) {
+        $CmdPath = Get-Command $cmd -ErrorAction SilentlyContinue
+        if ($CmdPath) { return $CmdPath.Path }
+    }
+    
+    # Check standard install paths
+    $Paths = @(
+        "$env:LOCALAPPDATA\Programs\Python\Python3*\python.exe",
+        "C:\Program Files\Python3*\python.exe",
+        "C:\Program Files (x86)\Python3*\python.exe"
+    )
+    foreach ($pattern in $Paths) {
+        $found = Get-Item $pattern -ErrorAction SilentlyContinue | Select-Object -First 1
+        if ($found) { return $found.FullName }
+    }
+    return $null
+}
 
+$PyPath = Find-Python
 $NeedInstall = $true
-if ($PyCmd) {
-    $VerStr = & $PyCmd.Path --version 2>&1
+
+if ($PyPath) {
+    $VerStr = & $PyPath --version 2>&1
     if ($VerStr -match 'Python (\d+)\.(\d+)') {
         $Maj = [int]$Matches[1]; $Min = [int]$Matches[2]
         Write-Log "Found Python $Maj.$Min"

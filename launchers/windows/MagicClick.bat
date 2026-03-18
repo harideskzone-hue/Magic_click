@@ -2,15 +2,33 @@
 setlocal EnableDelayedExpansion
 title Magic Click Launcher
 
-:: ── Check Python availability ──────────────────────────────────────────────
-where python >nul 2>&1
-if %ERRORLEVEL% NEQ 0 (
-    powershell -command "Add-Type -AssemblyName PresentationFramework; [System.Windows.MessageBox]::Show('Python 3 was not found on this computer.`n`nPlease install Python 3.10+ from python.org, then try again.', 'Magic Click — Python Not Found', 'OK', 'Error')"
+:: ── Check Python availability and version ────────────────────────────────
+set "PYTHON_EXE="
+
+:: 1. Check PATH for python or python3
+for %%P in (python python3) do (
+    where %%P >nul 2>&1
+    if !ERRORLEVEL! EQU 0 (
+        set "PYTHON_EXE=%%P"
+        goto :check_version
+    )
+)
+
+:: 2. Check standard Windows installations
+for /d %%D in ("%LocalAppData%\Programs\Python\Python3*" "C:\Program Files\Python3*") do (
+    if exist "%%D\python.exe" (
+        set "PYTHON_EXE=%%D\python.exe"
+        goto :check_version
+    )
+)
+
+if "%PYTHON_EXE%"=="" (
+    powershell -command "Add-Type -AssemblyName PresentationFramework; [System.Windows.MessageBox]::Show('Python 3 was not found on this computer.`n`nPlease install Python 3.10+ from python.org (ensure you check `"Add Python to PATH`" during installation), then try again.', 'Magic Click — Python Not Found', 'OK', 'Error')"
     exit /b 1
 )
 
-:: ── Check Python version ───────────────────────────────────────────────────
-for /f "tokens=2" %%V in ('python --version 2^>^&1') do set PY_VER=%%V
+:check_version
+for /f "tokens=2" %%V in ('"%PYTHON_EXE%" --version 2^>^&1') do set PY_VER=%%V
 for /f "tokens=1,2 delims=." %%A in ("%PY_VER%") do (
     set PY_MAJOR=%%A
     set PY_MINOR=%%B
@@ -44,7 +62,7 @@ powershell -command ^
   || exit /b 0
 
 :: ── Run bootstrap ─────────────────────────────────────────────────────────
-python bootstrap.py
+"%PYTHON_EXE%" bootstrap.py
 if %ERRORLEVEL% NEQ 0 (
     powershell -command "Add-Type -AssemblyName PresentationFramework; [System.Windows.MessageBox]::Show('Magic Click encountered an error during startup.`n`nPlease check magic_click_setup.log in the Magic Click folder for details.', 'Magic Click — Error', 'OK', 'Error')"
 )
