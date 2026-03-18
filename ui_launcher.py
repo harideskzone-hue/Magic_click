@@ -61,7 +61,7 @@ def _start_worker() -> subprocess.Popen:
     print("[Launcher] ▶  Starting job_worker (SJF queue)…")
     return subprocess.Popen(
         [PYTHON_EXE, "-u", "job_worker.py"],
-        cwd=os.path.join(BASE, "Temp_MCv2"),
+        cwd=os.path.join(BASE, "mc_engine"),
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         text=True,
@@ -73,7 +73,7 @@ def _start_camera() -> subprocess.Popen:
     print("[Launcher] ▶  Starting live_scorer (camera capture)…")
     return subprocess.Popen(
         [PYTHON_EXE, "-u", "live_scorer.py"],
-        cwd=os.path.join(BASE, "Temp_MCv2"),
+        cwd=os.path.join(BASE, "mc_engine"),
         # camera uses OpenCV windows — don't capture stdout so it can interact
         stdout=None,
         stderr=None,
