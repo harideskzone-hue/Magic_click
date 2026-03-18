@@ -21,9 +21,31 @@ chmod +x "$INSTALL_PATH/launchers/macos/build_app.sh" 2>/dev/null || true
 chmod +x "$INSTALL_PATH/launchers/linux/install.sh" 2>/dev/null || true
 chmod +x "$INSTALL_PATH/installers/macos/scripts/"* 2>/dev/null || true
 
-# Find python3
-PYTHON=$(command -v python3 2>/dev/null)
-[ -n "$PYTHON" ] || { log "FATAL: python3 not found"; exit 1; }
+# Find python3 (installer runs as root with restricted PATH)
+check_py_version() {
+    local py="$1"
+    local ver=$("$py" -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')" 2>/dev/null || echo "0.0")
+    local major=$(echo "$ver" | cut -d. -f1)
+    local minor=$(echo "$ver" | cut -d. -f2)
+    if [ "$major" -eq 3 ] && [ "$minor" -ge 10 ]; then return 0; fi
+    return 1
+}
+
+find_python() {
+    local py=$(command -v python3 2>/dev/null || command -v python 2>/dev/null)
+    if [ -n "$py" ] && check_py_version "$py"; then echo "$py"; return 0; fi
+    for v in 3.14 3.13 3.12 3.11 3.10; do
+        local p="/Library/Frameworks/Python.framework/Versions/$v/bin/python3"
+        if [ -x "$p" ] && check_py_version "$p"; then echo "$p"; return 0; fi
+    done
+    for p in "/opt/homebrew/bin/python3" "/usr/local/bin/python3"; do
+        if [ -x "$p" ] && check_py_version "$p"; then echo "$p"; return 0; fi
+    done
+    return 1
+}
+
+PYTHON=$(find_python)
+[ -n "$PYTHON" ] || { log "FATAL: Python >= 3.10 not found"; exit 1; }
 
 # Build the .app bundle
 log "▶  Building MagicClick.app…"
