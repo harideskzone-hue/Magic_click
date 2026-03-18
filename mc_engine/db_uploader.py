@@ -76,7 +76,7 @@ def upload_best_frame(session_scored_dir: str, session_name: str) -> dict | None
 
     # Fallback: look in the raw directory (sibling of scored dir)
     if not os.path.exists(img_path):
-        raw_dir = session_scored_dir.replace("_scored", "_raw")
+        raw_dir = session_scored_dir.replace("_scored", "_raw").replace("/score/", "/raw/")
         img_path = os.path.join(raw_dir, fname)
 
     if not os.path.exists(img_path):
