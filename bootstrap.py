@@ -107,14 +107,14 @@ def _check_internet() -> bool:
         return False
 
 # ── 5. Premium GUI ─────────────────────────────────────────────────────────────
-BG      = "#18181B"      # near-black
-SURFACE = "#27272A"      # card surface
-BORDER  = "#3F3F46"      # subtle border
-FG      = "#F4F4F5"      # primary text
-FG_DIM  = "#71717A"      # secondary/muted
-ACCENT  = "#007AFF"      # macOS blue
-SUCCESS = "#22C55E"      # green
-ERROR   = "#EF4444"      # red
+BG      = "#F4F7FE"      # dashboard background
+SURFACE = "#FFFFFF"      # dashboard card surface
+BORDER  = "#E8ECF5"      # dashboard light-grey
+FG      = "#333333"      # dashboard primary text
+FG_DIM  = "#8B94AA"      # dashboard grey
+ACCENT  = "#01207B"      # dashboard cobalt
+SUCCESS = "#4CAF50"      # dashboard green
+ERROR   = "#E53935"      # dashboard red
 
 
 class BootstrapGUI:
