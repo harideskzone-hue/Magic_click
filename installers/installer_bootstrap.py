@@ -262,9 +262,15 @@ def validate_system() -> list[str]:
     # Python version
     if sys.version_info < MIN_PYTHON:
         errors.append(
-            f"Python {MIN_PYTHON[0]}.{MIN_PYTHON[1]}+ required. "
+            f"Python {MIN_PYTHON[0]}.{MIN_PYTHON[1]} to 3.12 required. "
             f"You have {sys.version_info.major}.{sys.version_info.minor}. "
-            f"Please install a newer Python from python.org."
+            f"Please install Python 3.11 from python.org."
+        )
+    if sys.version_info >= (3, 13):
+        errors.append(
+            f"AI libraries do not yet have stable builds for Python 3.13+. "
+            f"You have Python {sys.version_info.major}.{sys.version_info.minor}. "
+            f"Please install Python 3.11 from python.org."
         )
 
     # macOS version >= 12 (Monterey)

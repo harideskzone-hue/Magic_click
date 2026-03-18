@@ -43,11 +43,22 @@ if sys.version_info < (3, 10):
     _r = tk.Tk(); _r.withdraw()
     messagebox.showerror(
         "Python Version Error",
-        f"Magic Click requires Python 3.10 or newer.\n"
+        f"Magic Click requires Python 3.10, 3.11, or 3.12.\n"
         f"You have Python {sys.version_info.major}.{sys.version_info.minor}.\n\n"
-        "Please install a newer Python and try again.",
+        "Please install Python 3.11 and try again.",
     )
     log.error("Unsupported Python version: %s", sys.version)
+    sys.exit(1)
+
+if sys.version_info >= (3, 13):
+    _r = tk.Tk(); _r.withdraw()
+    messagebox.showerror(
+        "Python Version Error",
+        f"Magic Click uses AI libraries which do not yet have stable builds for Python 3.13+.\n"
+        f"You have Python {sys.version_info.major}.{sys.version_info.minor}.\n\n"
+        "Please install Python 3.11 from python.org and try again.",
+    )
+    log.error("Unsupported Python version (too new): %s", sys.version)
     sys.exit(1)
 
 # ── 2. Constants ───────────────────────────────────────────────────────────────

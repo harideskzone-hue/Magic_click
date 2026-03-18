@@ -34,11 +34,15 @@ for /f "tokens=1,2 delims=." %%A in ("%PY_VER%") do (
     set PY_MINOR=%%B
 )
 if %PY_MAJOR% LSS 3 (
-    powershell -command "Add-Type -AssemblyName PresentationFramework; [System.Windows.MessageBox]::Show('Magic Click requires Python 3.10 or newer.`n`nYou have Python %PY_VER%.`n`nPlease upgrade at python.org.', 'Python Version Error', 'OK', 'Error')"
+    powershell -command "Add-Type -AssemblyName PresentationFramework; [System.Windows.MessageBox]::Show('Magic Click requires Python 3.10, 3.11, or 3.12.`n`nYou have Python %PY_VER%.`n`nPlease install Python 3.11 at python.org.', 'Python Version Error', 'OK', 'Error')"
     exit /b 1
 )
 if %PY_MAJOR% EQU 3 if %PY_MINOR% LSS 10 (
-    powershell -command "Add-Type -AssemblyName PresentationFramework; [System.Windows.MessageBox]::Show('Magic Click requires Python 3.10 or newer.`n`nYou have Python %PY_VER%.`n`nPlease upgrade at python.org.', 'Python Version Error', 'OK', 'Error')"
+    powershell -command "Add-Type -AssemblyName PresentationFramework; [System.Windows.MessageBox]::Show('Magic Click requires Python 3.10, 3.11, or 3.12.`n`nYou have Python %PY_VER%.`n`nPlease install Python 3.11 at python.org.', 'Python Version Error', 'OK', 'Error')"
+    exit /b 1
+)
+if %PY_MAJOR% EQU 3 if %PY_MINOR% GTR 12 (
+    powershell -command "Add-Type -AssemblyName PresentationFramework; [System.Windows.MessageBox]::Show('Magic Click requires Python 3.10, 3.11, or 3.12.`n`nYou have Python %PY_VER% (too new).`n`nAI libraries do not yet have stable builds for Python 3.13+. Please install Python 3.11 at python.org.', 'Python Version Error', 'OK', 'Error')"
     exit /b 1
 )
 

@@ -12,7 +12,7 @@ check_py_version() {
     local ver=$("$py" -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')" 2>/dev/null || echo "0.0")
     local major=$(echo "$ver" | cut -d. -f1)
     local minor=$(echo "$ver" | cut -d. -f2)
-    if [ "$major" -eq 3 ] && [ "$minor" -ge 10 ]; then return 0; fi
+    if [ "$major" -eq 3 ] && [ "$minor" -ge 10 ] && [ "$minor" -le 12 ]; then return 0; fi
     return 1
 }
 
@@ -23,7 +23,7 @@ find_python() {
     done
     
     # Common Linux alternative paths or deadsnakes PPA paths
-    for v in 3.14 3.13 3.12 3.11 3.10; do
+    for v in 3.12 3.11 3.10; do
         if [ -x "/usr/bin/python$v" ] && check_py_version "/usr/bin/python$v"; then echo "/usr/bin/python$v"; return 0; fi
         if [ -x "/usr/local/bin/python$v" ] && check_py_version "/usr/local/bin/python$v"; then echo "/usr/local/bin/python$v"; return 0; fi
     done
@@ -32,8 +32,9 @@ find_python() {
 
 PYTHON=$(find_python)
 if [ -z "$PYTHON" ]; then
-    echo "Error: Python 3.10 or newer was not found."
-    echo "Please install it using your package manager (e.g., 'sudo apt install python3' or 'sudo dnf install python3') and try again."
+    echo "Error: Compatible Python (3.10, 3.11, or 3.12) was not found."
+    echo "Python 3.13+ is not supported as AI libraries lack stable builds."
+    echo "Please install Python 3.11 using your package manager (e.g., 'sudo apt install python3' or 'sudo dnf install python3') and try again."
     exit 1
 fi
 

@@ -39,11 +39,11 @@ if ($PyPath) {
     if ($VerStr -match 'Python (\d+)\.(\d+)') {
         $Maj = [int]$Matches[1]; $Min = [int]$Matches[2]
         Write-Log "Found Python $Maj.$Min"
-        if ($Maj -gt $MinMajor -or ($Maj -eq $MinMajor -and $Min -ge $MinMinor)) {
-            Write-Log "Python version OK"
+        if ($Maj -eq $MinMajor -and $Min -ge $MinMinor -and $Min -le 12) {
+            Write-Log "Python version strictly OK (3.10 to 3.12)"
             $NeedInstall = $false
         } else {
-            Write-Log "Python $Maj.$Min is too old — installing 3.11"
+            Write-Log "Python $Maj.$Min is unsupported (too old or too new for ML wheels) — installing 3.11 silently"
         }
     }
 }

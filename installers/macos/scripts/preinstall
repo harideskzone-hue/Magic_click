@@ -18,13 +18,13 @@ MACOS_MAJOR=$(sw_vers -productVersion | cut -d. -f1)
 [ "$MACOS_MAJOR" -ge 12 ] || fail "macOS 12 (Monterey) or newer required. You have $(sw_vers -productVersion)."
 log "✓ macOS version OK"
 
-# Python 3.10+ check
+# Python 3.10 to 3.12 check (ML libraries like mediapipe lack wheels for 3.13+)
 check_py_version() {
     local py="$1"
     local ver=$("$py" -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')" 2>/dev/null || echo "0.0")
     local major=$(echo "$ver" | cut -d. -f1)
     local minor=$(echo "$ver" | cut -d. -f2)
-    if [ "$major" -eq 3 ] && [ "$minor" -ge 10 ]; then
+    if [ "$major" -eq 3 ] && [ "$minor" -ge 10 ] && [ "$minor" -le 12 ]; then
         return 0
     fi
     return 1
@@ -35,8 +35,8 @@ find_python() {
     local py=$(command -v python3 2>/dev/null || command -v python 2>/dev/null)
     if [ -n "$py" ] && check_py_version "$py"; then echo "$py"; return 0; fi
     
-    # 2. Check standard python.org installs (latest first)
-    for v in 3.14 3.13 3.12 3.11 3.10; do
+    # 2. Check standard python.org installs (latest supported ML version first)
+    for v in 3.12 3.11 3.10; do
         local p="/Library/Frameworks/Python.framework/Versions/$v/bin/python3"
         if [ -x "$p" ] && check_py_version "$p"; then echo "$p"; return 0; fi
     done
@@ -51,8 +51,8 @@ find_python() {
 
 PYTHON=$(find_python)
 if [ -z "$PYTHON" ]; then
-    osascript -e 'display alert "Python Not Found" message "Magic Click requires Python 3.10 or newer.\n\nPlease install Python from:\nhttps://www.python.org/downloads/\n\nThen run the installer again." as critical'
-    fail "Python >= 3.10 not found in PATH or standard locations"
+    osascript -e 'display alert "Compatible Python Not Found" message "Magic Click requires Python 3.10, 3.11, or 3.12.\n\nNewer versions (like 3.13 or 3.14) are not supported because AI libraries do not yet have stable builds for them.\n\nPlease install Python 3.11 from:\nhttps://www.python.org/downloads/\n\nThen run the installer again." as critical'
+    fail "Python >= 3.10 and <= 3.12 not found in PATH or standard locations"
 fi
 
 PY_VER=$("$PYTHON" -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')")
