@@ -89,6 +89,10 @@ def create_app() -> FastAPI:
         if _is_public(path):
             return await call_next(request)
 
+        # Allow internal scripts (e.g. db_uploader.py) to bypass auth using the secret
+        if request.headers.get("x-internal-token") == SESSION_SECRET:
+            return await call_next(request)
+
         if not is_session_valid(request.session):
             if path.startswith("/api/"):
                 return JSONResponse(
