@@ -444,19 +444,15 @@ def run_setup(gui: BootstrapGUI):
         # ── Stage 1: packages ──────────────────────────────────────────────────
         gui.set_stage(1)
 
-        # Upgrade pip
+        # Upgrade pip (non-fatal — existing pip can install packages fine)
         code = run_cmd(
-            [VENV_PYTHON, "-m", "pip", "install", "--upgrade", "pip"],
+            [VENV_PYTHON, "-m", "pip", "install", "--upgrade", "--timeout", "60", "pip"],
             "Preparing installer…", 10, 18,
         )
         if code != 0:
-            gui.error_and_exit(
-                "Pip Upgrade Failed",
-                "Could not upgrade pip.\n\n"
-                "Please check your internet connection and try again.\n"
-                f"Details are in: {LOG_PATH}",
-            )
-            return
+            log.warning("pip upgrade failed (code %d) — continuing with existing pip version", code)
+            gui.update_status("⚠  pip upgrade skipped — continuing…", "Using existing pip version")
+            gui.set_progress(18)
 
         # mc_database requirements
         if os.path.exists(mc_reqs):
