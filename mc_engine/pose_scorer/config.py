@@ -25,15 +25,16 @@ MODELS = {
 }
 
 DETECTION = {
-    "person_conf":             0.6,
-    "face_conf":               0.4,
+    "person_conf":             0.35,   # lowered from 0.6 — webcam+indoor needs lenient threshold
+    "face_conf":               0.35,   # used as fallback person signal
     "person_pad_top":          0.25,   # asymmetric — head at top
     "person_pad_bottom":       0.10,
     "person_pad_side":         0.10,
     "face_pad":                0.20,   # symmetric
     "face_min_size":           512,    # upscale target for MediaPipe crop
-    "min_person_height_ratio": 0.35,   # CALIBRATE — print ratios on your camera first
-    # Run: print(f"ratio={(py2-py1)/image_h:.3f}") on 20 images before enabling this gate
+    "min_person_height_ratio": 0.15,   # lowered from 0.35 — upper-body/seated shots are valid
+    # Previously 0.35 which rejected all seated/close-up subjects whose body
+    # occupies less than 35% of frame height. 0.15 accepts any visible presence.
 }
 
 # BLUR_THRESHOLD is read from .env (BLUR_THRESHOLD=40).

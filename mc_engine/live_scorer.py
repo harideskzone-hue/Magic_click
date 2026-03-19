@@ -90,8 +90,9 @@ class YoloDetectorThread:
     Runs YOLO person-detection in a dedicated thread.
     We pass in a camera_id so the caller knows which camera this result is for.
     """
-    def __init__(self, model, conf, min_height_ratio):
+    def __init__(self, model, conf, min_height_ratio, face_model=None):
         self.model = model
+        self.face_model = face_model   # optional fallback
         self.conf = conf
         self.min_height_ratio = min_height_ratio
 
@@ -132,6 +133,7 @@ class YoloDetectorThread:
             self._busy = True
             try:
                 h = frame.shape[0]
+                # Primary: YOLO person-body detection (class 0 = person)
                 results = self.model(frame, classes=[0], conf=self.conf, verbose=False)
                 boxes = results[0].boxes
                 detected = False
@@ -141,6 +143,17 @@ class YoloDetectorThread:
                         if (y2 - y1) / h >= self.min_height_ratio:
                             detected = True
                             break
+
+                # Fallback: face detection — catches close-up/upper-body where
+                # the full body silhouette is not visible inside the frame
+                if not detected and self.face_model is not None:
+                    try:
+                        face_results = self.face_model(frame, conf=self.conf, verbose=False)
+                        if face_results and len(face_results[0].boxes) > 0:
+                            detected = True
+                    except Exception:
+                        pass
+
                 self.result = detected
             except Exception:
                 pass
@@ -152,7 +165,7 @@ class YoloDetectorThread:
 
 
 class CameraProcessor:
-    def __init__(self, cam_id, src, person_det_model, config_dict):
+    def __init__(self, cam_id, src, person_det_model, config_dict, face_det_model=None):
         self.cam_id = cam_id
         self.src = src
         self.stream = CameraStream(src)
@@ -161,8 +174,11 @@ class CameraProcessor:
         self.stream.start()
 
         det_conf = config_dict['DETECTION']['person_conf']
-        min_h_ratio = config_dict['DETECTION'].get('min_person_height_ratio', 0.35)
-        self.yolo_thread = YoloDetectorThread(person_det_model, det_conf, min_h_ratio)
+        min_h_ratio = config_dict['DETECTION'].get('min_person_height_ratio', 0.15)
+        self.yolo_thread = YoloDetectorThread(
+            person_det_model, det_conf, min_h_ratio,
+            face_model=face_det_model   # face is the fallback when body is absent
+        )
         self.yolo_thread.start()
 
         self.last_scored_gray = None
@@ -332,7 +348,7 @@ def _get_active_cameras() -> list:
     return configs
 
 
-def _start_processor(cam_cfg: dict, person_det, config_dict) -> "CameraProcessor | None":
+def _start_processor(cam_cfg: dict, person_det, config_dict, face_det=None) -> "CameraProcessor | None":
     """
     Attempt to start a CameraProcessor for a config entry.
     Returns None (and logs) if the stream cannot be opened.
@@ -340,7 +356,7 @@ def _start_processor(cam_cfg: dict, person_det, config_dict) -> "CameraProcessor
     src = _parse_camera_source(str(cam_cfg['source']))
     label = cam_cfg.get('label', cam_cfg['id'])
     print(f"  [CAM] Connecting → {label} ({src}) ...")
-    proc = CameraProcessor(cam_cfg['id'], src, person_det, config_dict)
+    proc = CameraProcessor(cam_cfg['id'], src, person_det, config_dict, face_det_model=face_det)
     if proc.stream.stopped:
         print(f"  [CAM] ✗ Failed to open {label} ({src})")
         return None
@@ -361,8 +377,15 @@ def main():
         'DEBUG': cfg.DEBUG
     }
 
-    print("Loading YOLO model (this may take a few seconds)...")
+    print("Loading YOLO models (this may take a few seconds)...")
     person_det = YOLO(cfg.MODELS['person_detector'])
+    # Load the face model as a fallback detection source
+    try:
+        face_det = YOLO(cfg.MODELS['face_detector'])
+        print("  ✓ Face model loaded (used as fallback for close-up shots)")
+    except Exception as e:
+        face_det = None
+        print(f"  ⚠ Face model unavailable (fallback disabled): {e}")
 
     # ── Initial camera load ─────────────────────────────────────────────────
     active_cfg   = _get_active_cameras()
@@ -397,7 +420,7 @@ def main():
             now = time.time()
             if cid in retry_times and now < retry_times[cid]:
                 continue  # still in back-off
-            proc = _start_processor(cam_cfg, person_det, config_dict)
+            proc = _start_processor(cam_cfg, person_det, config_dict, face_det=face_det)
             if proc:
                 processors[cid] = proc
                 retry_times.pop(cid, None)

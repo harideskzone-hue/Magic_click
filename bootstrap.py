@@ -117,134 +117,179 @@ def _check_internet() -> bool:
         log.warning("Internet check failed: %s", exc)
         return False
 
-# ── 5. Premium GUI ─────────────────────────────────────────────────────────────
-BG      = "#F4F7FE"      # dashboard background
-SURFACE = "#FFFFFF"      # dashboard card surface
-BORDER  = "#E8ECF5"      # dashboard light-grey
-FG      = "#333333"      # dashboard primary text
-FG_DIM  = "#8B94AA"      # dashboard grey
-ACCENT  = "#01207B"      # dashboard cobalt
-SUCCESS = "#4CAF50"      # dashboard green
-ERROR   = "#E53935"      # dashboard red
+# ── 5. Premium GUI — Dark Cobalt theme matching the Magic Click dashboard ──────
+BG      = "#0D1117"      # deep near-black background
+SURFACE = "#161B22"      # card surface
+BORDER  = "#21262D"      # subtle border
+FG      = "#E6EDF3"      # primary text
+FG_DIM  = "#8B949E"      # muted text
+ACCENT  = "#2F81F7"      # cobalt blue accent
+SUCCESS = "#3FB950"      # lush green
+ERROR   = "#F85149"      # vibrant red
+ACC_DARK= "#1C6FCA"      # darker cobalt for pressed state
 
 
 class BootstrapGUI:
-    """Premium dark-mode setup window."""
+    """Dark cobalt animated launcher window — matches Magic Click dashboard theme."""
 
-    # ── stages shown in the header ─────────────────────────────────────────────
     STAGES = [
-        ("🛠", "Setting up environment"),
-        ("📦", "Installing packages"),
-        ("🚀", "Launching Magic Click"),
+        ("🔍", "System Check"),
+        ("⚙️",  "Environment"),
+        ("📦", "Packages"),
+        ("🧠", "AI Models"),
+        ("🚀", "Launching"),
     ]
+    # Estimated seconds per stage (for time-estimate label)
+    _STAGE_TIMES = [2, 5, 180, 60, 5]
+
+    # Spinner dot frames
+    _DOTS = ["⠋","⠙","⠹","⠸","⠼","⠴","⠦","⠧","⠇","⠏"]
 
     def __init__(self):
         self.root = tk.Tk()
         self.root.title("Magic Click — Setup")
-        self.root.geometry("500x260")
+        self.root.geometry("560x310")
         self.root.resizable(False, False)
         self.root.configure(bg=BG)
         self.root.eval("tk::PlaceWindow . center")
         self.root.protocol("WM_DELETE_WINDOW", self._on_close)
 
-        # ttk style (progress bar + frames)
+        # ttk style
         style = ttk.Style()
         style.theme_use("clam")
         style.configure("TFrame",       background=BG)
-        style.configure("Surface.TFrame", background=SURFACE)
+        style.configure("Card.TFrame",  background=SURFACE)
         style.configure("TLabel",       background=BG, foreground=FG)
-        style.configure("Dim.TLabel",   background=BG, foreground=FG_DIM)
         style.configure(
-            "TProgressbar",
-            troughcolor=SURFACE,
+            "Accent.TProgressbar",
+            troughcolor=BORDER,
             background=ACCENT,
             bordercolor=BG,
             lightcolor=ACCENT,
             darkcolor=ACCENT,
-            thickness=8,
+            thickness=10,
         )
 
-        outer = ttk.Frame(self.root, padding="28 22 28 22")
+        outer = tk.Frame(self.root, bg=BG, padx=28, pady=20)
         outer.pack(fill=tk.BOTH, expand=True)
 
-        # ── logo + title row ───────────────────────────────────────────────────
-        top = ttk.Frame(outer); top.pack(fill=tk.X, pady=(0, 18))
-        tk.Label(
-            top, text="⚡", font=("Helvetica", 28),
-            bg=BG, fg=ACCENT,
-        ).pack(side=tk.LEFT, padx=(0, 12))
+        # ── Logo + title row ────────────────────────────────────────────────────
+        top = tk.Frame(outer, bg=BG)
+        top.pack(fill=tk.X, pady=(0, 16))
 
-        title_col = ttk.Frame(top); title_col.pack(side=tk.LEFT)
-        tk.Label(
-            title_col, text="Magic Click",
-            font=("Helvetica", 20, "bold"), bg=BG, fg=FG,
-        ).pack(anchor=tk.W)
-        tk.Label(
-            title_col, text="One-click AI vision launcher",
-            font=("Helvetica", 10), bg=BG, fg=FG_DIM,
-        ).pack(anchor=tk.W)
+        # Animated pulsing bolt
+        self._bolt_lbl = tk.Label(top, text="⚡", font=("Helvetica", 32), bg=BG, fg=ACCENT)
+        self._bolt_lbl.pack(side=tk.LEFT, padx=(0, 14))
 
-        # ── stage indicators ───────────────────────────────────────────────────
-        self._stage_var = tk.IntVar(value=0)
-        stage_row = ttk.Frame(outer); stage_row.pack(fill=tk.X, pady=(0, 14))
-        self._stage_labels = []
+        title_col = tk.Frame(top, bg=BG)
+        title_col.pack(side=tk.LEFT)
+        tk.Label(title_col, text="Magic Click",
+                 font=("Helvetica", 22, "bold"), bg=BG, fg=FG).pack(anchor=tk.W)
+        tk.Label(title_col, text="AI vision pipeline · setting up your environment",
+                 font=("Helvetica", 9), bg=BG, fg=FG_DIM).pack(anchor=tk.W)
+
+        # Spinner dot in top-right
+        self._spinner_var = tk.StringVar(value=self._DOTS[0])
+        tk.Label(top, textvariable=self._spinner_var,
+                 font=("Courier", 18), bg=BG, fg=ACCENT).pack(side=tk.RIGHT)
+
+        # ── 5-stage progress strip ───────────────────────────────────────────────
+        strip = tk.Frame(outer, bg=BG)
+        strip.pack(fill=tk.X, pady=(0, 14))
+        self._stage_badges: list[tk.Label] = []
+        self._stage_txts:   list[tk.Label] = []
         for i, (icon, label) in enumerate(self.STAGES):
-            col = tk.Frame(stage_row, bg=BG); col.pack(side=tk.LEFT, padx=(0, 18))
-            icon_lbl = tk.Label(col, text=icon, font=("Helvetica", 14), bg=BG, fg=FG_DIM)
-            icon_lbl.pack(anchor=tk.W)
-            txt_lbl = tk.Label(
-                col, text=label, font=("Helvetica", 9), bg=BG, fg=FG_DIM,
-            )
-            txt_lbl.pack(anchor=tk.W)
-            self._stage_labels.append((icon_lbl, txt_lbl))
+            col = tk.Frame(strip, bg=BG)
+            col.pack(side=tk.LEFT, padx=(0, 16))
+            badge = tk.Label(col, text=icon, font=("Helvetica", 18),
+                             bg=BORDER, fg=FG_DIM, padx=4, pady=2, relief="flat")
+            badge.pack(anchor=tk.W)
+            txt = tk.Label(col, text=label, font=("Helvetica", 8),
+                           bg=BG, fg=FG_DIM)
+            txt.pack(anchor=tk.W)
+            self._stage_badges.append(badge)
+            self._stage_txts.append(txt)
 
-        # ── status text ────────────────────────────────────────────────────────
-        self._status_var = tk.StringVar(value="Starting up…")
-        tk.Label(
-            outer, textvariable=self._status_var,
-            font=("Helvetica", 11), bg=BG, fg=FG,
-            anchor=tk.W,
-        ).pack(fill=tk.X, pady=(0, 8))
+        # ── Status label with animated spinner prefix ────────────────────────────
+        self._status_var = tk.StringVar(value="Initialising…")
+        self._status_lbl = tk.Label(outer, textvariable=self._status_var,
+                                    font=("Helvetica", 11, "bold"), bg=BG, fg=FG,
+                                    anchor=tk.W)
+        self._status_lbl.pack(fill=tk.X, pady=(0, 6))
 
-        # ── progress bar + percentage ──────────────────────────────────────────
-        bar_row = tk.Frame(outer, bg=BG); bar_row.pack(fill=tk.X, pady=(0, 6))
+        # ── Progress bar + pct + time estimate ──────────────────────────────────
+        bar_row = tk.Frame(outer, bg=BG)
+        bar_row.pack(fill=tk.X, pady=(0, 6))
         self._progress = ttk.Progressbar(
-            bar_row, mode="determinate", maximum=100.0, length=380,
+            bar_row, style="Accent.TProgressbar",
+            mode="determinate", maximum=100.0,
         )
         self._progress.pack(side=tk.LEFT, fill=tk.X, expand=True)
         self._pct_var = tk.StringVar(value="0%")
-        tk.Label(
-            bar_row, textvariable=self._pct_var,
-            font=("Menlo", 10, "bold"), bg=BG, fg=ACCENT, width=5,
-        ).pack(side=tk.RIGHT, padx=(8, 0))
+        tk.Label(bar_row, textvariable=self._pct_var,
+                 font=("Menlo", 10, "bold"), bg=BG, fg=ACCENT, width=5
+                 ).pack(side=tk.RIGHT, padx=(8, 0))
         self._progress["value"] = 0.0
 
-        # ── detail / log line ──────────────────────────────────────────────────
+        # Time estimate
+        self._eta_var = tk.StringVar(value="")
+        tk.Label(outer, textvariable=self._eta_var,
+                 font=("Helvetica", 9), bg=BG, fg=FG_DIM, anchor=tk.W
+                 ).pack(fill=tk.X, pady=(0, 4))
+
+        # ── Detail log line ──────────────────────────────────────────────────────
         self._detail_var = tk.StringVar(value="")
-        tk.Label(
-            outer, textvariable=self._detail_var,
-            font=("Menlo", 8), bg=BG, fg=FG_DIM,
-            anchor=tk.W, wraplength=440,
-        ).pack(fill=tk.X)
+        tk.Label(outer, textvariable=self._detail_var,
+                 font=("Menlo", 8), bg=BG, fg=FG_DIM,
+                 anchor=tk.W, wraplength=500).pack(fill=tk.X)
 
         self._closing = False
+        self._dot_idx = 0
+        self._current_stage = 0
+        self._stage_start = time.time()
+        self._animate()
 
-    # ── public API ─────────────────────────────────────────────────────────────
+    # ── Animation loop ──────────────────────────────────────────────────────────
+    def _animate(self):
+        if self._closing:
+            return
+        self._dot_idx = (self._dot_idx + 1) % len(self._DOTS)
+        self._spinner_var.set(self._DOTS[self._dot_idx])
+
+        # Pulse active stage badge between SURFACE and a cobalt tint
+        pulse_on = (self._dot_idx % 4 < 2)
+        if self._current_stage < len(self._stage_badges):
+            b = self._stage_badges[self._current_stage]
+            b.config(bg=ACC_DARK if pulse_on else ACCENT)
+
+        # Time estimate
+        elapsed = time.time() - self._stage_start
+        stage_est = self._STAGE_TIMES[min(self._current_stage, len(self._STAGE_TIMES)-1)]
+        remaining = max(0, stage_est - int(elapsed))
+        if remaining > 0:
+            self._eta_var.set(f"⏱  ~{remaining}s remaining in this stage")
+        else:
+            self._eta_var.set("⏳  Almost done — please wait…")
+
+        self.root.after(100, self._animate)
+
+    # ── public API ──────────────────────────────────────────────────────────────
     def set_stage(self, index: int):
-        """Highlight stage 0/1/2 in the header row."""
         self.root.after(0, self._apply_stage, index)
 
     def _apply_stage(self, index: int):
-        for i, (icon_lbl, txt_lbl) in enumerate(self._stage_labels):
-            if i < index:          # done
-                icon_lbl.config(fg=SUCCESS)
-                txt_lbl.config(fg=SUCCESS)
-            elif i == index:       # active
-                icon_lbl.config(fg=FG)
-                txt_lbl.config(fg=FG)
-            else:                  # pending
-                icon_lbl.config(fg=FG_DIM)
-                txt_lbl.config(fg=FG_DIM)
+        self._current_stage = index
+        self._stage_start = time.time()
+        for i, (badge, txt) in enumerate(zip(self._stage_badges, self._stage_txts)):
+            if i < index:      # done — green
+                badge.config(bg=SUCCESS,  fg="#0D1117")
+                txt.config(fg=SUCCESS)
+            elif i == index:   # active — cobalt
+                badge.config(bg=ACCENT,   fg="#FFFFFF")
+                txt.config(fg=FG)
+            else:              # pending — dim
+                badge.config(bg=BORDER,   fg=FG_DIM)
+                txt.config(fg=FG_DIM)
 
     def update_status(self, main: str, detail: str = ""):
         self.root.after(0, self._set_labels, main, detail)
@@ -260,10 +305,9 @@ class BootstrapGUI:
         v = max(0.0, min(100.0, float(value)))
         self._progress["value"] = v
         self._pct_var.set(f"{int(v)}%")
-        # Turn bar green at 100%
         if v >= 100:
             s = ttk.Style()
-            s.configure("TProgressbar", background=SUCCESS,
+            s.configure("Accent.TProgressbar", background=SUCCESS,
                          lightcolor=SUCCESS, darkcolor=SUCCESS)
 
     def error_and_exit(self, title: str, message: str):
@@ -284,11 +328,10 @@ class BootstrapGUI:
         self.root.destroy()
 
     def _on_close(self):
-        """User clicked the window ✕."""
         if not self._closing:
             if messagebox.askyesno(
                 "Cancel Setup?",
-                "Setup is still in progress.\n\nAre you sure you want to cancel?",
+                "Magic Click setup is in progress.\n\nAre you sure you want to quit?",
             ):
                 _release_lock()
                 self.root.destroy()
@@ -450,6 +493,7 @@ def run_setup(gui: BootstrapGUI):
         models_dir = os.path.join(SCRIPT_DIR, "mc_engine", "models")
         os.makedirs(models_dir, exist_ok=True)
         MODEL_URLS = {
+            "yolo26n.pt":                "https://github.com/ultralytics/assets/releases/download/v8.3.0/yolov8n.pt",
             "yolo26n-face.pt":           "https://github.com/akanametov/yolo-face/releases/download/1.0.0/yolo26n-face.pt",
             "face_landmarker.task":      "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task",
             "pose_landmarker_full.task": "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_full/float16/1/pose_landmarker_full.task",
