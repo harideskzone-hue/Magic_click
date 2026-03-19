@@ -388,6 +388,54 @@ except Exception as e:
         os.unlink(tmp)
 
 
+def _download_ml_models(gui: InstallerGUI):
+    """
+    Download the ML model files that scoring needs but are too large for git.
+    Models land in ROOT/mc_engine/models/ (same place build_pkg.sh packages).
+    Skips any model that already exists on disk.
+    """
+    import urllib.request
+    import urllib.error
+
+    MODELS_DIR = ROOT / "mc_engine" / "models"
+    MODELS_DIR.mkdir(parents=True, exist_ok=True)
+
+    MODELS = [
+        (
+            "yolo26n-face.pt",
+            "https://github.com/akanametov/yolo-face/releases/download/v0.0.0/yolov8n-face.pt",
+            "YOLO face detector (5 MB)",
+        ),
+        (
+            "face_landmarker.task",
+            "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task",
+            "MediaPipe face landmarker (3.5 MB)",
+        ),
+        (
+            "pose_landmarker_full.task",
+            "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_full/float16/1/pose_landmarker_full.task",
+            "MediaPipe pose landmarker (9 MB)",
+        ),
+    ]
+
+    gui.append_log("  Downloading ML models…")
+    for fname, url, label in MODELS:
+        dest = MODELS_DIR / fname
+        if dest.exists() and dest.stat().st_size > 1_000:
+            gui.append_log(f"    ✓  {fname} already present — skipping")
+            continue
+        gui.append_log(f"    ⬇  {label}…")
+        try:
+            headers = {"User-Agent": "MagicClick-Installer/2.0"}
+            req = urllib.request.Request(url, headers=headers)
+            with urllib.request.urlopen(req, timeout=120) as resp, open(dest, "wb") as out:
+                shutil.copyfileobj(resp, out)
+            gui.append_log(f"    ✓  {fname} downloaded ({dest.stat().st_size // 1024} KB)")
+        except Exception as exc:
+            gui.append_log(f"    ⚠  {fname} failed (non-fatal): {exc}")
+            log.warning(f"Model download failed {fname}: {exc}")
+
+
 def _verify_services(gui: InstallerGUI) -> bool:
     """Start the API briefly and confirm /api/health returns 200."""
     gui.append_log("  Starting API for verification…")
@@ -503,8 +551,9 @@ def run_setup(gui: InstallerGUI):
         gui.set_stage(2, 68)
 
         # ── Stage 3: Warm model cache ─────────────────────────────────────
-        gui.set_stage(3, 72, "Downloading AI recognition models…\n(~200 MB, one-time only)")
+        gui.set_stage(3, 72, "Downloading AI recognition models…\n(~220 MB, one-time only)")
         _warm_models(gui)
+        _download_ml_models(gui)
         gui.append_log("✓ AI models ready.")
         gui.set_stage(3, 88)
 
