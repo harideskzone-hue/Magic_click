@@ -27,7 +27,8 @@ from tkinter import ttk, messagebox
 
 # ── 0. Logging ─────────────────────────────────────────────────────────────────
 SCRIPT_DIR   = os.path.dirname(os.path.abspath(__file__))
-LOG_PATH     = os.path.join(SCRIPT_DIR, "magic_click_setup.log")
+# Log to /tmp so it is always writable regardless of install location permissions
+LOG_PATH     = os.path.join(tempfile.gettempdir(), "magic_click_setup.log")
 logging.basicConfig(
     filename=LOG_PATH,
     filemode="a",
