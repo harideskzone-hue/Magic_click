@@ -126,7 +126,8 @@ def filter_scored_images(input_dir, source_dir, output_dir, min_score=None, repo
                         detail = ""
                         if r is not None:
                             try:
-                                detail = f" body={r.text[:200]}"
+                                resp_text: str = str(getattr(r, 'text', ''))
+                                detail = f" body={resp_text[:200]}"
                             except Exception:
                                 pass
                         print(f"  [DB UPLOAD FAIL] {original_fname}: {upload_err}{detail}")

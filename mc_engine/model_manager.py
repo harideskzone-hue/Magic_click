@@ -4,6 +4,7 @@ model_manager.py — Centralized AI Model Registry & Validator
 Auto-downloads missing models with SHA256 verification, supports
 fallback mirrors, and provides a warmup function for cold-start prevention.
 """
+from __future__ import annotations
 
 import os
 import sys
@@ -11,13 +12,21 @@ import hashlib
 import logging
 import shutil
 import tempfile
+from typing import Any, Dict, List, TypedDict
 
 log = logging.getLogger("model_manager")
+
+
+class ModelInfo(TypedDict):
+    urls: List[str]
+    sha256: str
+    size_mb: float
+    required: bool
 
 # ── Model Registry ──────────────────────────────────────────────────────────────
 MODELS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "models")
 
-MODEL_REGISTRY = {
+MODEL_REGISTRY: Dict[str, ModelInfo] = {
     "yolo26n.pt": {
         "urls": [
             "https://github.com/ultralytics/assets/releases/download/v8.3.0/yolov8n.pt",
@@ -150,13 +159,13 @@ def download_missing(force: bool = False) -> bool:
     return all_ok
 
 
-def warmup_models() -> dict:
+def warmup_models() -> Dict[str, Any]:
     """
     Preload YOLO and InsightFace models to avoid cold-start delays.
     Returns timing info for each model.
     """
     import time
-    results = {}
+    results: Dict[str, Any] = {}
 
     # Warmup YOLO
     yolo_path = os.path.join(MODELS_DIR, "yolo26n.pt")
