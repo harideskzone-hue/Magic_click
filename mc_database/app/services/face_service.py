@@ -1,6 +1,7 @@
 from typing import Dict, List, Optional, Any, Union
 import logging
 import uuid
+import threading
 import numpy as np
 
 from app.config import SIMILARITY_THRESHOLD, MIN_DET_SCORE
@@ -10,6 +11,9 @@ from app.core.storage import get_storage
 from app.core.image_utils import decode_base64_image, encode_image_to_bytes
 
 log = logging.getLogger("face_service")
+
+# Global lock to prevent concurrent FastAPI threads from corrupting FAISS or SQLite
+_service_lock = threading.Lock()
 
 
 class FaceService:
@@ -36,10 +40,14 @@ class FaceService:
     def process_and_add_image(self, image_data: Union[str, bytes], score: float, is_cropped: bool = False) -> Dict[str, Any]:
         """
         Process and add a single image to the database.
+        Using a global lock to prevent concurrent FastAPI threads from corrupting FAISS or SQLite.
+        """
+        with _service_lock:
+            return self._process_and_add_image_internal(image_data, score, is_cropped)
 
-        Duplicate prevention: if the image embedding already exceeds
-        SIMILARITY_THRESHOLD against an existing person, the image is added
-        to that person rather than creating a new folder.
+    def _process_and_add_image_internal(self, image_data: Union[str, bytes], score: float, is_cropped: bool = False) -> Dict[str, Any]:
+        """
+        Internal unlocked method for process_and_add_image.
         """
         storage, vector_db, encoder = self._get_deps()
 
