@@ -1,13 +1,32 @@
+"""
+Job queue manager — SQLite backend (SJF scheduling).
+
+All files (jobs.db, captured_videos/) are stored under the user-writable
+app-data directory, never inside the root-owned /Applications/MagicClick/.
+"""
 import sqlite3
 import os
+import sys
 import time
 
-DB_PATH = os.path.join("captured_videos", "jobs.db")
+# ── User data directory (same logic as bootstrap.py) ─────────────────────────
+def _user_data_dir() -> str:
+    if sys.platform == "darwin":
+        return os.path.join(os.path.expanduser("~"), "Library", "Application Support", "MagicClick")
+    elif sys.platform == "win32":
+        return os.path.join(os.environ.get("APPDATA", os.path.expanduser("~")), "MagicClick")
+    else:
+        return os.path.join(os.path.expanduser("~"), ".magic_click")
+
+USER_DATA   = _user_data_dir()
+VIDEOS_DIR  = os.path.join(USER_DATA, "captured_videos")
+DB_PATH     = os.path.join(VIDEOS_DIR, "jobs.db")
+
+os.makedirs(VIDEOS_DIR, exist_ok=True)
+
 
 def _get_conn():
-    os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
     conn = sqlite3.connect(DB_PATH, timeout=10.0)
-    # Give the connection dict-like rows
     conn.row_factory = sqlite3.Row
     return conn
 
@@ -26,7 +45,7 @@ def init_db():
         ''')
         conn.commit()
 
-def add_job(video_path: str, frame_count: int) -> int | None:
+def add_job(video_path: str, frame_count: int) -> "int | None":
     """Adds a new job to the queue."""
     with _get_conn() as conn:
         cursor = conn.cursor()
@@ -41,29 +60,24 @@ def add_job(video_path: str, frame_count: int) -> int | None:
         return cursor.lastrowid
 
 def get_shortest_job():
-    """Retrieves the pending job with the lowest frame count (SJF). Marks it as RUNNING."""
+    """Retrieves the pending job with the lowest frame count (SJF). Marks it RUNNING."""
     with _get_conn() as conn:
-        # Use a transaction to safely mark a job as RUNNING
         cursor = conn.cursor()
         cursor.execute('''
-            SELECT * FROM jobs 
-            WHERE status = 'PENDING' 
-            ORDER BY frame_count ASC, created_at ASC 
+            SELECT * FROM jobs
+            WHERE status = 'PENDING'
+            ORDER BY frame_count ASC, created_at ASC
             LIMIT 1
         ''')
         row = cursor.fetchone()
-        
         if row is None:
             return None
-            
         job_id = row['id']
         cursor.execute('''
-            UPDATE jobs 
-            SET status = 'RUNNING', started_at = ? 
+            UPDATE jobs
+            SET status = 'RUNNING', started_at = ?
             WHERE id = ? AND status = 'PENDING'
         ''', (time.time(), job_id))
-        
-        # If the row was actually updated, we successfully claimed it
         if cursor.rowcount > 0:
             conn.commit()
             return dict(row)
@@ -72,18 +86,14 @@ def get_shortest_job():
 def mark_job_completed(job_id: int):
     with _get_conn() as conn:
         conn.execute('''
-            UPDATE jobs 
-            SET status = 'COMPLETED', completed_at = ? 
-            WHERE id = ?
+            UPDATE jobs SET status = 'COMPLETED', completed_at = ? WHERE id = ?
         ''', (time.time(), job_id))
         conn.commit()
 
 def mark_job_failed(job_id: int):
     with _get_conn() as conn:
         conn.execute('''
-            UPDATE jobs 
-            SET status = 'FAILED', completed_at = ? 
-            WHERE id = ?
+            UPDATE jobs SET status = 'FAILED', completed_at = ? WHERE id = ?
         ''', (time.time(), job_id))
         conn.commit()
 

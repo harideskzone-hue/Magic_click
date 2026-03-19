@@ -247,7 +247,7 @@ class CameraProcessor:
         if person_present and not self.is_recording:
             self.is_recording = True
             ts = int(now * 1000)
-            self.video_fname = f"captured_videos/cam{self.cam_id}_session_{ts}.mp4"
+            self.video_fname = os.path.join(queue_manager.VIDEOS_DIR, f"cam{self.cam_id}_session_{ts}.mp4")
             fourcc = cv2.VideoWriter_fourcc(*'mp4v')
             rec_fps = self.display_fps if 10 <= self.display_fps <= 45 else 25.0
             self.video_writer = cv2.VideoWriter(self.video_fname, fourcc, rec_fps, (w_f, h_f))
@@ -440,7 +440,7 @@ def main():
         print("  [CAM] No cameras online yet. Waiting for cameras to be added via dashboard...")
         print(f"  [CAM] Config file: {_CAMERAS_JSON}")
 
-    os.makedirs("captured_videos", exist_ok=True)
+    os.makedirs(queue_manager.VIDEOS_DIR, exist_ok=True)
     cv2.namedWindow('Multi-Camera Feed', cv2.WINDOW_NORMAL)
     cv2.resizeWindow('Multi-Camera Feed', 1280, 720)
     print("\n--- Multi-Camera System Active ---")
