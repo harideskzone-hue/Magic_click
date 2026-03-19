@@ -67,12 +67,39 @@ os.chdir(SCRIPT_DIR)
 
 IS_WINDOWS   = sys.platform == "win32"
 IS_MAC       = sys.platform == "darwin"
-VENV_DIR     = os.path.join(SCRIPT_DIR, ".venv")
+
+# All user-writable data goes to the user's home app-data directory.
+# /Applications/MagicClick/ is owned by root after .pkg install, so we can
+# NEVER write venv / logs / locks there as a normal user.
+if IS_WINDOWS:
+    _USER_DATA = os.path.join(os.environ.get("APPDATA", os.path.expanduser("~")), "MagicClick")
+elif IS_MAC:
+    _USER_DATA = os.path.join(os.path.expanduser("~"), "Library", "Application Support", "MagicClick")
+else:  # Linux
+    _USER_DATA = os.path.join(os.path.expanduser("~"), ".magic_click")
+
+os.makedirs(_USER_DATA, exist_ok=True)
+
+VENV_DIR     = os.path.join(_USER_DATA, ".venv")
 VENV_PYTHON  = (
     os.path.join(VENV_DIR, "Scripts", "python.exe") if IS_WINDOWS
     else os.path.join(VENV_DIR, "bin", "python3")
 )
 LOCK_FILE    = os.path.join(tempfile.gettempdir(), "magic_click.lock")
+LOG_PATH     = os.path.join(_USER_DATA, "magic_click_setup.log")
+
+# Re-configure logging now that we have the final LOG_PATH
+for _h in list(logging.root.handlers):  # remove any earlier handlers
+    logging.root.removeHandler(_h)
+logging.basicConfig(
+    filename=LOG_PATH,
+    filemode="a",
+    level=logging.DEBUG,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+)
+log = logging.getLogger("bootstrap")
+log.info("User data dir: %s", _USER_DATA)
+
 MAX_RETRIES  = 3       # pip install retry attempts
 INTERNET_HOST = "8.8.8.8"
 INTERNET_PORT = 53

@@ -34,18 +34,7 @@ import tkinter as tk
 from pathlib import Path
 from tkinter import messagebox
 
-# ── Paths ──────────────────────────────────────────────────────────────────────
-HERE        = Path(__file__).resolve().parent          # installers/
-ROOT        = HERE.parent                               # Magic_Click/
-VENV_DIR    = ROOT / ".venv"
-REQ_FILES   = [
-    ROOT / "mc_database" / "requirements.txt",  # API + auth
-    ROOT / "mc_engine"   / "requirements.txt",  # live scorer + AI models
-]
-LOG_FILE    = ROOT / "magic_click_install.log"
-LOCK_FILE   = Path(tempfile.gettempdir()) / "agent_magic_click_install.lock"
-
-# ── Constants ──────────────────────────────────────────────────────────────────
+# ── Constants ──────────────────────────────────────────────────────────────────────
 MIN_PYTHON  = (3, 10)
 MIN_DISK_GB = 3.0
 API_PORT    = 5001
@@ -55,8 +44,31 @@ IS_WIN  = sys.platform == "win32"
 IS_MAC  = sys.platform == "darwin"
 IS_LIN  = sys.platform.startswith("linux")
 
-VENV_PY = VENV_DIR / ("Scripts/python.exe" if IS_WIN else "bin/python3")
-VENV_PIP = VENV_DIR / ("Scripts/pip.exe" if IS_WIN else "bin/pip")
+# ── Paths ──────────────────────────────────────────────────────────────────────
+HERE        = Path(__file__).resolve().parent          # installers/
+ROOT        = HERE.parent                               # Magic_Click/
+
+# User-writable app data (venv, logs) MUST live outside the root-owned
+# /Applications/MagicClick/ install dir. Use the standard user data location.
+if IS_WIN:
+    _USER_DATA = Path(os.environ.get("APPDATA", Path.home())) / "MagicClick"
+elif IS_MAC:
+    _USER_DATA = Path.home() / "Library" / "Application Support" / "MagicClick"
+else:  # Linux
+    _USER_DATA = Path.home() / ".magic_click"
+
+_USER_DATA.mkdir(parents=True, exist_ok=True)
+
+VENV_DIR    = _USER_DATA / ".venv"
+REQ_FILES   = [
+    ROOT / "mc_database" / "requirements.txt",  # API + auth
+    ROOT / "mc_engine"   / "requirements.txt",  # live scorer + AI models
+]
+LOG_FILE    = _USER_DATA / "magic_click_install.log"
+LOCK_FILE   = Path(tempfile.gettempdir()) / "agent_magic_click_install.lock"
+
+VENV_PY  = VENV_DIR / ("Scripts/python.exe" if IS_WIN else "bin/python3")
+VENV_PIP = VENV_DIR / ("Scripts/pip.exe"    if IS_WIN else "bin/pip")
 
 # ── Logging ────────────────────────────────────────────────────────────────────
 logging.basicConfig(
