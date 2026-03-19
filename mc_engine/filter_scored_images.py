@@ -15,6 +15,27 @@ except ImportError:
 _DB_URL = os.environ.get("MC_DATABASE_URL", "http://localhost:5001")
 _MIN_SCORE_DEFAULT = int(os.environ.get("MC_MIN_SCORE", "60"))
 
+
+def _queue_failed_upload(output_dir: str, fname: str, score: float):
+    """Persist a failed upload to a local JSON queue for later retry."""
+    import time as _t
+    queue_path = os.path.join(output_dir, "failed_uploads.json")
+    queue = []
+    if os.path.exists(queue_path):
+        try:
+            with open(queue_path, "r") as f:
+                queue = json.load(f)
+        except Exception:
+            pass
+    queue.append({"image": fname, "score": score, "timestamp": _t.time()})
+    try:
+        with open(queue_path, "w") as f:
+            json.dump(queue, f, indent=2)
+        print(f"  [QUEUE] Saved {fname} to {queue_path} for later retry")
+    except Exception as e:
+        print(f"  [QUEUE ERROR] Could not save {fname}: {e}")
+
+
 def filter_scored_images(input_dir, source_dir, output_dir, min_score=None, report_path=None):
     """
     Reads scoring results from report_path JSON, checks for SCORED status and min_score,
@@ -87,11 +108,32 @@ def filter_scored_images(input_dir, source_dir, output_dir, min_score=None, repo
             except Exception:
                 pass  # Launcher may not have token yet; API will reject with 401
 
-            r = requests.post(upload_url, json=payload, headers=headers, timeout=10)
-            r.raise_for_status()
-            print(f"  [DB UPLOAD OK] {original_fname} → {upload_url} (score:{score:.1f})")
+            r = None
+            _MAX_UPLOAD_RETRIES = 3
+            for attempt in range(1, _MAX_UPLOAD_RETRIES + 1):
+                try:
+                    r = requests.post(upload_url, json=payload, headers=headers, timeout=10)
+                    r.raise_for_status()
+                    print(f"  [DB UPLOAD OK] {original_fname} → {upload_url} (score:{score:.1f})")
+                    break
+                except Exception as upload_err:
+                    if attempt < _MAX_UPLOAD_RETRIES:
+                        wait = 2 ** attempt
+                        print(f"  [DB UPLOAD RETRY {attempt}/{_MAX_UPLOAD_RETRIES}] {original_fname}: {upload_err} (retrying in {wait}s)")
+                        import time as _time
+                        _time.sleep(wait)
+                    else:
+                        detail = ""
+                        if r is not None:
+                            try:
+                                detail = f" body={r.text[:200]}"
+                            except Exception:
+                                pass
+                        print(f"  [DB UPLOAD FAIL] {original_fname}: {upload_err}{detail}")
+                        # Queue for later retry
+                        _queue_failed_upload(output_dir, original_fname, float(score))
         except Exception as e:
-            print(f"  [DB UPLOAD FAIL] {original_fname}: {e}")
+            print(f"  [DB ERROR] {original_fname}: {e}")
 
     print(f"\nDone! {passed_count} raw images (score >= {min_score}) saved to '{output_dir}'.")
     if missing_count:

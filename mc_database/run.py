@@ -11,7 +11,7 @@ New in this version
 * /api/shutdown       — graceful pipeline shutdown (auth required)
 * CSRF validation     — all state-changing POSTs require X-CSRF-Token
 * Session expiry      — sessions expire after 8 hours of inactivity
-* /api/health stays public so ui_launcher.py can poll it
+* /api/health stays public so dev_start.sh can poll it
 """
 
 import os
@@ -60,7 +60,7 @@ with open(_SECRET_FILE) as _f:
     SESSION_SECRET = _f.read().strip()
 
 # ── Helper: public routes that skip auth ──────────────────────────────────────
-PUBLIC_PATHS = {"/login", "/auth/login", "/auth/setup", "/api/health", "/favicon.ico"}
+PUBLIC_PATHS = {"/login", "/auth/login", "/auth/setup", "/api/health", "/api/debug/last_upload", "/favicon.ico"}
 
 def _is_public(path: str) -> bool:
     return path in PUBLIC_PATHS or path.startswith("/static/")
@@ -237,7 +237,7 @@ def create_app() -> FastAPI:
 
         def _shutdown():
             time.sleep(1.5)
-            # Send SIGTERM to the parent process group (ui_launcher.py started us)
+            # Send SIGTERM to the parent process group (dev_start.sh started us)
             try:
                 pgid = os.getpgid(os.getpid())
                 log.info(f"Issuing killpg to process group {pgid}")
@@ -245,7 +245,7 @@ def create_app() -> FastAPI:
             except Exception as e:
                 log.error(f"killpg failed: {e}")
             
-            # Fallback 1: Kill the parent process directly (ui_launcher.py)
+            # Fallback 1: Kill the parent process directly (dev_start.sh)
             try:
                 ppid = os.getppid()
                 log.info(f"Issuing kill to parent process {ppid}")

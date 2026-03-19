@@ -47,6 +47,16 @@ async def health():
     """Health check endpoint."""
     return face_service.get_health_stats()
 
+# ── Debug / Observability ─────────────────────────────────────────────────────
+_last_upload_info: dict = {}
+
+@api.get('/debug/last_upload')
+async def debug_last_upload():
+    """Return metadata about the most recent upload for observability."""
+    if not _last_upload_info:
+        return JSONResponse({"status": "no_uploads_yet"})
+    return JSONResponse(_last_upload_info)
+
 @api.post('/search')
 async def search_post(request: SearchRequest):
     """
@@ -121,6 +131,16 @@ async def add_image(request: Request):
         # Process
         result = face_service.process_and_add_image(img_data, score, cropped)
         status_code = 200 if result['success'] else 400
+
+        # Track for debug endpoint
+        if result.get('success'):
+            _last_upload_info.update({
+                "person_id": result.get("person_id"),
+                "action": result.get("action"),
+                "score": score,
+                "timestamp": time.time(),
+            })
+
         return JSONResponse(result, status_code=status_code)
         
     except Exception as e:

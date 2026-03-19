@@ -28,6 +28,107 @@ def _parse_camera_source(val: str):
     return val.strip()
 
 
+# ── Preflight Validation ──────────────────────────────────────────────────────
+def _preflight():
+    """
+    Validate all critical dependencies before starting the pipeline.
+    Returns True if all required checks pass.
+    """
+    _ENGINE_DIR = os.path.dirname(os.path.abspath(__file__))
+    _MODELS_DIR = os.path.join(_ENGINE_DIR, "models")
+
+    checks = []
+
+    # 1. Model files
+    required_models = ["yolo26n.pt", "face_landmarker.task", "pose_landmarker_full.task"]
+    optional_models = ["yolo26n-face.pt"]
+
+    for m in required_models:
+        path = os.path.join(_MODELS_DIR, m)
+        exists = os.path.isfile(path)
+        size_mb = os.path.getsize(path) / 1e6 if exists else 0
+        checks.append(("✓" if exists else "✗", m, f"{size_mb:.1f} MB" if exists else "MISSING (REQUIRED)"))
+        if not exists:
+            # Attempt auto-download
+            try:
+                sys.path.insert(0, _ENGINE_DIR)
+                from model_manager import download_missing  # type: ignore
+                download_missing()
+            except Exception:
+                pass
+
+    for m in optional_models:
+        path = os.path.join(_MODELS_DIR, m)
+        exists = os.path.isfile(path)
+        size_mb = os.path.getsize(path) / 1e6 if exists else 0
+        checks.append(("✓" if exists else "⚠", m, f"{size_mb:.1f} MB" if exists else "missing (optional)"))
+
+    # 2. Camera test
+    cam_ok = False
+    cam_detail = "UNAVAILABLE"
+    try:
+        cap = cv2.VideoCapture(0)
+        if cap.isOpened():
+            w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+            h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+            cam_ok = True
+            cam_detail = f"{w}×{h}"
+            cap.release()
+        else:
+            cap.release()
+    except Exception:
+        pass
+    checks.append(("✓" if cam_ok else "✗", "Camera 0", cam_detail))
+
+    # 3. API health
+    api_ok = False
+    api_detail = "NOT RESPONDING"
+    try:
+        import urllib.request
+        with urllib.request.urlopen("http://localhost:5001/api/health", timeout=3) as resp:
+            if resp.status == 200:
+                import json as _json
+                data = _json.loads(resp.read())
+                api_ok = True
+                api_detail = f"200 OK, {data.get('person_count', 0)} persons"
+    except Exception:
+        pass
+    checks.append(("✓" if api_ok else "✗", "API health", api_detail))
+
+    # 4. Session token
+    token_ok = False
+    if sys.platform == "darwin":
+        _usr_dir = os.path.join(os.path.expanduser("~"), "Library", "Application Support", "MagicClick")
+    elif sys.platform == "win32":
+        _usr_dir = os.path.join(os.environ.get("APPDATA", os.path.expanduser("~")), "MagicClick")
+    else:
+        _usr_dir = os.path.join(os.path.expanduser("~"), ".magic_click")
+    _secret = os.path.join(_usr_dir, ".session_secret")
+    if os.path.isfile(_secret):
+        token_ok = True
+    checks.append(("✓" if token_ok else "⚠", "Session token", "loaded" if token_ok else "missing (uploads may fail)"))
+
+    # 5. Disk space
+    import shutil
+    total, used, free = shutil.disk_usage(os.path.expanduser("~"))
+    free_gb = free / (1024**3)
+    disk_ok = free_gb >= 0.5
+    checks.append(("✓" if disk_ok else "⚠", "Disk space", f"{free_gb:.1f} GB free"))
+
+    # Print table
+    print("\n┌─ PREFLIGHT ──────────────────────────────────────────┐")
+    for sym, name, detail in checks:
+        print(f"│ {sym} {name:<28} ({detail:<20}) │")
+    print("└──────────────────────────────────────────────────────┘\n")
+
+    # Check for fatal failures
+    fatal = any(sym == "✗" for sym, _, _ in checks)
+    if fatal:
+        print("[PREFLIGHT] ✗ Some required checks failed. See above.")
+        return False
+    return True
+
+
 # ── Threaded camera reader ────────────────────────────────────────────────────
 class CameraStream:
     def __init__(self, src):
@@ -509,4 +610,11 @@ def main():
 
 if __name__ == "__main__":
     import json  # needed for _load_cameras_json
+
+    # Run preflight checks
+    if not _preflight():
+        print("[FATAL] Preflight checks failed. Fix issues above and retry.")
+        sys.exit(1)
+
     main()
+

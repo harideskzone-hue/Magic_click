@@ -170,8 +170,8 @@ try:
 except Exception as e:
     check("GET /", False, str(e))
 
-# ── TEST 7: ui_launcher.py health poll logic ───────────────────────────────────
-print("\n7. ui_launcher Health-Poll Logic")
+# ── TEST 7: dev_start.sh health poll logic ─────────────────────────────────
+print("\n7. dev_start.sh Health-Poll Logic")
 try:
     import urllib.request
     with urllib.request.urlopen(f"{API}/api/health", timeout=3) as resp:
