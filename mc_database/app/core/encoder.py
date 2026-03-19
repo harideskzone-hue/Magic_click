@@ -13,13 +13,18 @@ class FaceEncoder:
     def __init__(self):
         """Initialize the InsightFace model (CPU-optimized).
         
-        Using antelopev2 for better accuracy across diverse skin tones.
+        Using buffalo_sc for speed; det_size=640 so faces at normal
+        office-camera distance (20-80px at 320 input) are reliably detected.
+        Env override: MC_DET_SIZE=320 to trade accuracy for speed.
         """
+        import os
+        det_px = int(os.environ.get("MC_DET_SIZE", "640"))
         self.app = FaceAnalysis(
             name='buffalo_sc',  # Lightweight model that auto-downloads (~14MB)
             providers=['CPUExecutionProvider']
         )
-        self.app.prepare(ctx_id=-1, det_size=(320, 320))
+        self.app.prepare(ctx_id=-1, det_size=(det_px, det_px))
+
     
     def detect_and_encode(self, image: np.ndarray) -> tuple[np.ndarray | None, dict | None]:
         """

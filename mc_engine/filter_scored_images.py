@@ -62,13 +62,25 @@ def filter_scored_images(input_dir, source_dir, output_dir, min_score=None, repo
         try:
             with open(src_path, "rb") as image_file:
                 encoded_string = base64.b64encode(image_file.read()).decode('utf-8')
-            
+
             payload = {
                 "img": f"data:image/jpeg;base64,{encoded_string}",
-                "score": float(score)  # Pass the aesthetic score
+                "score": float(score),
             }
             upload_url = f"{_DB_URL}/api/add"
-            r = requests.post(upload_url, json=payload, timeout=10)
+
+            # Read internal token (same approach as db_uploader.py)
+            headers = {}
+            _secret_path = os.path.join(
+                os.path.dirname(__file__), "..", "mc_database", "data", ".session_secret"
+            )
+            try:
+                with open(_secret_path, "r") as _sf:
+                    headers["x-internal-token"] = _sf.read().strip()
+            except Exception:
+                pass  # Launcher may not have token yet; API will reject with 401
+
+            r = requests.post(upload_url, json=payload, headers=headers, timeout=10)
             r.raise_for_status()
             print(f"  [DB UPLOAD OK] {original_fname} → {upload_url} (score:{score:.1f})")
         except Exception as e:
