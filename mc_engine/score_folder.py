@@ -6,7 +6,10 @@ import json
 from tqdm import tqdm
 from ultralytics import YOLO
 
-sys.path.insert(0, os.getcwd())
+# Use __file__ (absolute), not os.getcwd(), so this works regardless of launch dir
+_ENGINE_ROOT = os.path.dirname(os.path.abspath(__file__))
+if _ENGINE_ROOT not in sys.path:
+    sys.path.insert(0, _ENGINE_ROOT)
 
 from pose_scorer import config as cfg
 from pose_scorer.scorer import init_detectors, score_image
@@ -32,12 +35,26 @@ def main():
     cfg.validate()
 
     print("Loading models...")
+    # ── Person detector (required) ─────────────────────────────────────────
     try:
         person_det = YOLO(cfg.MODELS['person_detector'])
-        face_det   = YOLO(cfg.MODELS['face_detector'])
+    except Exception as e:
+        print(f"FATAL: Cannot load person detector: {e}")
+        return
+
+    # ── Face detector (optional — fallback disabled if absent) ─────────────
+    try:
+        face_det = YOLO(cfg.MODELS['face_detector'])
+        print("  ✓ Face model loaded")
+    except Exception as e:
+        face_det = None
+        print(f"  ⚠ Face model unavailable (fallback disabled): {e}")
+
+    # ── MediaPipe landmarkers (required) ───────────────────────────────────
+    try:
         face_lm, pose_lm = init_detectors()
     except Exception as e:
-        print(f"Initialization error: {e}")
+        print(f"FATAL: Cannot load MediaPipe landmarkers: {e}")
         return
 
     config_dict = {
