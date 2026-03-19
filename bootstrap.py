@@ -162,7 +162,7 @@ class BootstrapGUI:
         style.configure("Card.TFrame",  background=SURFACE)
         style.configure("TLabel",       background=BG, foreground=FG)
         style.configure(
-            "Accent.TProgressbar",
+            "TProgressbar",
             troughcolor=BORDER,
             background=ACCENT,
             bordercolor=BG,
@@ -222,7 +222,7 @@ class BootstrapGUI:
         bar_row = tk.Frame(outer, bg=BG)
         bar_row.pack(fill=tk.X, pady=(0, 6))
         self._progress = ttk.Progressbar(
-            bar_row, style="Accent.TProgressbar",
+            bar_row,
             mode="determinate", maximum=100.0,
         )
         self._progress.pack(side=tk.LEFT, fill=tk.X, expand=True)
@@ -308,7 +308,7 @@ class BootstrapGUI:
         self._pct_var.set(f"{int(v)}%")
         if v >= 100:
             s = ttk.Style()
-            s.configure("Accent.TProgressbar", background=SUCCESS,
+            s.configure("TProgressbar", background=SUCCESS,
                          lightcolor=SUCCESS, darkcolor=SUCCESS)
 
     def error_and_exit(self, title: str, message: str):
