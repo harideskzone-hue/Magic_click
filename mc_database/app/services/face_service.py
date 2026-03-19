@@ -1,5 +1,6 @@
 from typing import Dict, List, Optional, Any, Union
 import logging
+import uuid
 import numpy as np
 
 from app.config import SIMILARITY_THRESHOLD, MIN_DET_SCORE
@@ -115,11 +116,14 @@ class FaceService:
                 }
 
         # ── No match — create new person ─────────────────────────────────────────
-        faiss_index = vector_db.add_embedding('temp', embedding)
+        # Use a unique placeholder key (not shared 'temp') to avoid clobbering
+        # when multiple /api/add requests arrive concurrently.
+        placeholder_key = f"_new_{uuid.uuid4().hex}"
+        faiss_index = vector_db.add_embedding(placeholder_key, embedding)
         person_id = storage.create_person(faiss_index)
 
-        # Move 'temp' → real person_id in mappings
-        vector_db.person_to_id[person_id] = vector_db.person_to_id.pop('temp')
+        # Move placeholder → real person_id in mappings
+        vector_db.person_to_id[person_id] = vector_db.person_to_id.pop(placeholder_key)
         vector_db.id_to_person[faiss_index] = person_id
 
         image_id = storage.save_image(person_id, img_bytes, score)
