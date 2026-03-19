@@ -32,7 +32,7 @@ from fastapi.responses import (  # type: ignore
 from starlette.middleware.sessions import SessionMiddleware  # type: ignore
 
 from app.api.routes import api  # type: ignore
-from app.config import HOST, PORT, DEBUG, BASE_DIR  # type: ignore
+from app.config import HOST, PORT, DEBUG, BASE_DIR, USER_DATA_DIR  # type: ignore
 from app.auth import (  # type: ignore
     is_setup_complete, load_credentials, save_credentials,
     hash_password, verify_password,
@@ -51,8 +51,7 @@ logging.getLogger("vector_db").setLevel(logging.DEBUG)
 log = logging.getLogger("auth")
 
 # ── Session secret key (generated once per install) ────────────────────────────
-_SECRET_FILE = os.path.join(BASE_DIR, "data", ".session_secret")
-os.makedirs(os.path.join(BASE_DIR, "data"), exist_ok=True)
+_SECRET_FILE = os.path.join(USER_DATA_DIR, ".session_secret")
 if not os.path.exists(_SECRET_FILE):
     import secrets as _sec
     with open(_SECRET_FILE, "w") as _f:

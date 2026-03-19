@@ -124,6 +124,8 @@ async def add_image(request: Request):
         return JSONResponse(result, status_code=status_code)
         
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         return JSONResponse({'success': False, 'error': str(e)}, status_code=400)
 
 @api.post('/batch_add')

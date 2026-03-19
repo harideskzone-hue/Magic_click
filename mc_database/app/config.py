@@ -1,14 +1,25 @@
 """\nFace Embedding Database Configuration\n"""
 import os
 
+import sys
+
 # Base directories
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DATA_DIR = os.path.join(BASE_DIR, 'data')
+
+# Unified User Data Directory (fixes root PermissionError in /Applications)
+if sys.platform == "win32":
+    USER_DATA_DIR = os.path.join(os.environ.get("APPDATA", os.path.expanduser("~")), "MagicClick")
+elif sys.platform == "darwin":
+    USER_DATA_DIR = os.path.join(os.path.expanduser("~"), "Library", "Application Support", "MagicClick")
+else:
+    USER_DATA_DIR = os.path.join(os.path.expanduser("~"), ".magic_click")
+
+DATA_DIR = os.path.join(USER_DATA_DIR, 'mc_database_data')
 IMAGES_DIR = os.path.join(DATA_DIR, 'images')
 DB_DIR = os.path.join(DATA_DIR, 'db')
 
 # Create directories if they don't exist
-for dir_path in [DATA_DIR, IMAGES_DIR, DB_DIR]:
+for dir_path in [USER_DATA_DIR, DATA_DIR, IMAGES_DIR, DB_DIR]:
     os.makedirs(dir_path, exist_ok=True)
 
 # Database paths
