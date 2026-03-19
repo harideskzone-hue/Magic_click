@@ -38,21 +38,46 @@ check_py_version() {
     return 1
 }
 
+# Detect hardware architecture (arm64 = Apple Silicon)
+HW_ARCH=$(uname -m)
+
+native_python_for_arch() {
+    # Returns 0 only if the given Python binary runs natively on this CPU.
+    # On Apple Silicon we reject x86_64-only binaries (Rosetta).
+    local py="$1"
+    if [ "$HW_ARCH" = "arm64" ]; then
+        local py_arch
+        py_arch=$(python3 -c "import platform; print(platform.machine())" 2>/dev/null || echo "unknown")
+        arch="$py_arch" "$py" -c "import platform; m=platform.machine(); exit(0 if m=='arm64' else 1)" 2>/dev/null
+        return $?
+    fi
+    return 0   # on Intel, any x86_64 Python is fine
+}
+
 find_python() {
-    local py=$(command -v python3 2>/dev/null || command -v python 2>/dev/null)
-    if [ -n "$py" ] && check_py_version "$py"; then echo "$py"; return 0; fi
+    # On Apple Silicon: prefer Homebrew (native arm64) Python first
+    if [ "$HW_ARCH" = "arm64" ]; then
+        for p in "/opt/homebrew/bin/python3.12" "/opt/homebrew/bin/python3.11" "/opt/homebrew/bin/python3.10" "/opt/homebrew/bin/python3"; do
+            if [ -x "$p" ] && check_py_version "$p" && native_python_for_arch "$p"; then
+                echo "$p"; return 0
+            fi
+        done
+    fi
+    # Universal fallback: Framework Python (works on Intel; on Apple Silicon this
+    # is Rosetta but acceptable if Homebrew isn't installed)
     for v in 3.12 3.11 3.10; do
         local p="/Library/Frameworks/Python.framework/Versions/$v/bin/python3"
         if [ -x "$p" ] && check_py_version "$p"; then echo "$p"; return 0; fi
     done
-    for p in "/opt/homebrew/bin/python3" "/usr/local/bin/python3"; do
-        if [ -x "$p" ] && check_py_version "$p"; then echo "$p"; return 0; fi
+    for p in "/usr/local/bin/python3" "$(command -v python3 2>/dev/null)"; do
+        if [ -n "$p" ] && [ -x "$p" ] && check_py_version "$p"; then echo "$p"; return 0; fi
     done
     return 1
 }
 
 PYTHON=$(find_python)
 [ -n "$PYTHON" ] || { log "FATAL: Python >= 3.10 and <= 3.12 not found"; exit 1; }
+log "Using Python: $PYTHON (arch: $("$PYTHON" -c 'import platform; print(platform.machine())' 2>/dev/null || echo unknown))"
 
 # Build the .app bundle
 log "▶  Building MagicClick.app…"

@@ -432,6 +432,34 @@ def run_setup(gui: BootstrapGUI):
     try:
         gui.set_stage(0)
 
+        # ── Architecture self-check (Apple Silicon guard) ──────────────────────
+        # If a venv exists but was built with an x86_64 (Rosetta) Python on
+        # an arm64 Mac, all compiled .so wheels will be wrong-arch and crash.
+        # Detect this and nuke the venv so we rebuild with the native Python.
+        if os.path.exists(VENV_PYTHON) and IS_MAC:
+            import struct, platform as _pl
+            host_arch = _pl.machine()          # 'arm64' on Apple Silicon
+            try:
+                proc = subprocess.run(
+                    [VENV_PYTHON, "-c", "import platform; print(platform.machine())"],
+                    capture_output=True, text=True, timeout=10,
+                )
+                venv_arch = proc.stdout.strip()
+            except Exception:
+                venv_arch = host_arch           # assume OK if we can't check
+
+            if venv_arch != host_arch and host_arch == "arm64":
+                log.warning(
+                    "Venv arch mismatch: venv=%s host=%s — deleting and rebuilding",
+                    venv_arch, host_arch,
+                )
+                gui.update_status(
+                    "⚠  Detected wrong-architecture venv — rebuilding…",
+                    f"Venv was {venv_arch}, Mac is {host_arch}. This takes ~1 min.",
+                )
+                import shutil
+                shutil.rmtree(VENV_DIR, ignore_errors=True)
+
         if not os.path.exists(VENV_DIR) or not os.path.exists(VENV_PYTHON):
             gui.update_status("Creating virtual environment…", "One moment…")
             gui.set_progress(3)
