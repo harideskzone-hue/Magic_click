@@ -417,7 +417,7 @@ def run_setup(gui: BootstrapGUI):
         # mc_database requirements
         if os.path.exists(mc_reqs):
             code = run_cmd(
-                [VENV_PYTHON, "-m", "pip", "install", "-r", mc_reqs],
+                [VENV_PYTHON, "-m", "pip", "install", "--timeout", "180", "-r", mc_reqs],
                 "Installing core database module…", 18, 45,
             )
             if code != 0:
@@ -433,7 +433,7 @@ def run_setup(gui: BootstrapGUI):
         # AI pipeline requirements
         if os.path.exists(pipeline_reqs):
             code = run_cmd(
-                [VENV_PYTHON, "-m", "pip", "install", "-r", pipeline_reqs],
+                [VENV_PYTHON, "-m", "pip", "install", "--timeout", "180", "-r", pipeline_reqs],
                 "Installing AI models (this may take a few minutes)…", 45, 95,
             )
             if code != 0:

@@ -43,7 +43,7 @@ REQ_FILES   = [
     ROOT / "mc_engine"   / "requirements.txt",  # live scorer + AI models
 ]
 LOG_FILE    = ROOT / "magic_click_install.log"
-LOCK_FILE   = Path(tempfile.gettempdir()) / "magic_click_install.lock"
+LOCK_FILE   = Path(tempfile.gettempdir()) / "agent_magic_click_install.lock"
 
 # ── Constants ──────────────────────────────────────────────────────────────────
 MIN_PYTHON  = (3, 10)
@@ -340,7 +340,7 @@ def _run(cmd: list[str], cwd=None, capture: bool = True):
 
 def _pip_install(extra_flags: list[str], gui: InstallerGUI, attempt: int) -> bool:
     gui.append_log(f"  pip install (attempt {attempt}/{MAX_RETRIES})…")
-    cmd: list[str] = [str(VENV_PIP), "install", "--quiet", "--no-warn-script-location"] + extra_flags
+    cmd: list[str] = [str(VENV_PIP), "install", "--quiet", "--no-warn-script-location", "--timeout", "180"] + extra_flags
     for req in REQ_FILES:
         if req.exists():
             cmd.extend(["-r", str(req)])
