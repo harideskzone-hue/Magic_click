@@ -71,6 +71,8 @@ class FaceService:
         # ── Encode face ─────────────────────────────────────────────────────────
         embedding = None
 
+        assert image is not None
+
         if is_cropped and image.shape[0] == 112 and image.shape[1] == 112:
             embedding = encoder.encode_cropped_face(image)
         else:
@@ -118,7 +120,7 @@ class FaceService:
                     'action': 'added_to_existing',
                     'person_id': person_id,
                     'name': person.get('name'),
-                    'similarity': round(similarity, 4),
+                    'similarity': float(f"{similarity:.4f}"),
                     'image_count': person['image_count'] + 1,
                     'image_id': image_id
                 }
@@ -160,6 +162,9 @@ class FaceService:
         storage, vector_db, encoder = self._get_deps()
 
         embedding = None
+        
+        assert image is not None
+        
         if is_cropped and image.shape[0] == 112 and image.shape[1] == 112:
             embedding = encoder.encode_cropped_face(image)
         else:
@@ -183,7 +188,7 @@ class FaceService:
                 'success': True,
                 'match': False,
                 'message': 'No matching person found',
-                'best_score': round(best_score, 4),
+                'best_score': float(f"{best_score:.4f}"),
                 'threshold': SIMILARITY_THRESHOLD
             }
 
@@ -210,7 +215,7 @@ class FaceService:
             'match': True,
             'person_id': person_id,
             'name': person.get('name'),
-            'similarity': round(similarity, 4),
+            'similarity': float(f"{similarity:.4f}"),
             'images': image_data
         }
 
