@@ -4,6 +4,17 @@ import argparse
 import subprocess
 import shutil
 
+# ── User data directory (same logic as queue_manager.py) ─────────────────────
+def _user_data_dir() -> str:
+    if sys.platform == "darwin":
+        return os.path.join(os.path.expanduser("~"), "Library", "Application Support", "MagicClick")
+    elif sys.platform == "win32":
+        return os.path.join(os.environ.get("APPDATA", os.path.expanduser("~")), "MagicClick")
+    else:
+        return os.path.join(os.path.expanduser("~"), ".magic_click")
+
+_SHOTS_BASE = os.path.join(_user_data_dir(), "captured_shots")
+
 # Import existing functions
 from extract_frames import extract_frames  # type: ignore
 from filter_scored_images import filter_scored_images  # type: ignore
@@ -26,31 +37,32 @@ def main():
     basename = os.path.splitext(os.path.basename(video_path))[0]
     
     # 1. Extract Frames
-    session_raw_dir = os.path.join("captured_shots", "raw", f"{basename}_raw")
+    session_raw_dir = os.path.join(_SHOTS_BASE, "raw", f"{basename}_raw")
     print(f"\n[STEP 1] Extracting frames to {session_raw_dir}...")
     os.makedirs(session_raw_dir, exist_ok=True)
     extract_frames(video_path, session_raw_dir)
     
     # 2. Score Folder
-    session_scored_dir = os.path.join("captured_shots", "score", f"{basename}_scored")
+    session_scored_dir = os.path.join(_SHOTS_BASE, "score", f"{basename}_scored")
     print(f"\n[STEP 2] Scoring frames to {session_scored_dir}...")
     os.makedirs(session_scored_dir, exist_ok=True)
     
-    # Call score_folder.py via subprocess to cleanly initialize the heavy models
+    # Call score_folder.py via subprocess inside the mc_engine directory
+    mc_engine_dir = os.path.dirname(os.path.abspath(__file__))
     cmd = [
-        sys.executable, "score_folder.py", 
-        "--input", session_raw_dir, 
+        sys.executable, os.path.join(mc_engine_dir, "score_folder.py"),
+        "--input", session_raw_dir,
         "--output", session_scored_dir,
-        "--no-viz" # Optional: disable visualization images to save time and disk space
+        "--no-viz"  # disable visualization images to save time and disk space
     ]
     
-    ret = subprocess.run(cmd)
+    ret = subprocess.run(cmd, cwd=mc_engine_dir)
     if ret.returncode != 0:
         print("\nError: Scoring process failed.")
         return
         
     # 3. Filter Images
-    final_dir = os.path.join("captured_shots", "final", f"{basename}_final")
+    final_dir = os.path.join(_SHOTS_BASE, "final", f"{basename}_final")
     report_path = os.path.join(session_scored_dir, "results.json")
     print(f"\n[STEP 3] Filtering scored images to {final_dir}...")
     filter_scored_images(
@@ -67,15 +79,15 @@ def main():
     except Exception as e:
         print(f"Warning: Could not delete video {video_path}: {e}")
         
-    # 4. Upload best frame to mc_database
+    # 5. Upload best frame to mc_database
     if _DB_UPLOAD_ENABLED:
-        print(f"\n[STEP 4] Uploading best frame to mc_database...")
+        print(f"\n[STEP 5] Uploading best frame to mc_database...")
         try:
             upload_best_frame(session_scored_dir, basename)
         except Exception as e:
-            print(f"[STEP 4] Upload error (non-fatal): {e}")
+            print(f"[STEP 5] Upload error (non-fatal): {e}")
     else:
-        print("\n[STEP 4] db_uploader not available — skipping DB upload.")
+        print("\n[STEP 5] db_uploader not available — skipping DB upload.")
 
     print(f"\n[DONE] Post-processing for {video_path} complete. Best images saved to {final_dir}.")
 
