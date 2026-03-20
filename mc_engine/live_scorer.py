@@ -409,6 +409,23 @@ class CameraProcessor:
         if self.video_writer:
             self.video_writer.release()
 
+# ── Remote Camera IPC State ────────────────────────────────────────────────────
+_CAMERA_STATE_FILE = os.environ.get(
+    "CAMERAS_STATE_PATH",
+    os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "camera_state.json")
+)
+
+def _is_system_active() -> bool:
+    if not os.path.exists(_CAMERA_STATE_FILE):
+        return False
+    try:
+        import json
+        with open(_CAMERA_STATE_FILE, "r") as f:
+            data = json.load(f)
+            return data.get("active", False)
+    except Exception:
+        return False
+
 # ── Camera config from cameras.json ───────────────────────────────────────────
 _CAMERAS_JSON = os.environ.get(
     "CAMERAS_JSON_PATH",
@@ -534,26 +551,49 @@ def main():
                 retry_times[cid] = time.time() + delay
                 print(f"  [CAM] Will retry {cid} in {delay}s")
 
-    _sync_processors(active_cfg)
-
-    if not processors:
-        # Don't exit immediately — keep polling for cameras to be added via UI
-        print("  [CAM] No cameras online yet. Waiting for cameras to be added via dashboard...")
-        print(f"  [CAM] Config file: {_CAMERAS_JSON}")
-
     os.makedirs(queue_manager.VIDEOS_DIR, exist_ok=True)
-    cv2.namedWindow('Multi-Camera Feed', cv2.WINDOW_NORMAL)
-    cv2.resizeWindow('Multi-Camera Feed', 1280, 720)
-    print("\n--- Multi-Camera System Active ---")
-    print("Press 'q' at any time to quit. Add cameras at http://localhost:5001/")
+    print("\n--- Multi-Camera System Ready (IDLE) ---")
+    print("Awaiting Start signal from Dashboard http://localhost:5001/")
 
-    last_reload = time.time()
+    last_reload = 0.0
+    system_active = False
 
     try:
         while True:
+            target_active = _is_system_active()
+            
+            if not target_active:
+                if system_active:
+                    print("\n  [SYSTEM] Remote stop signal received. Shutting down hardware...")
+                    for proc in processors.values():
+                        proc.stop()
+                    processors.clear()
+                    retry_times.clear()
+                    retry_counts.clear()
+                    try:
+                        cv2.destroyAllWindows()
+                    except Exception: pass
+                    system_active = False
+                    print("  [SYSTEM] Hardware released. Entering IDLE state.")
+                    time.sleep(1.0) # Pause an extra beat to let hardware catch up
+                
+                time.sleep(0.5)
+                continue
+                
+            else:
+                if not system_active:
+                    print("\n  [SYSTEM] Remote start signal received. Allocating hardware...")
+                    try:
+                        cv2.namedWindow('Multi-Camera Feed', cv2.WINDOW_NORMAL)
+                        cv2.resizeWindow('Multi-Camera Feed', 1280, 720)
+                    except Exception as e:
+                        print(f"  [CAM] Warning: UI not available in current environment ({e})")
+                    system_active = True
+                    last_reload = 0 # Force instant sync of cameras.json
+                
             # ── Hot-reload cameras.json every _CAM_RELOAD_INTERVAL seconds ──
             now = time.time()
-            if now - last_reload >= _CAM_RELOAD_INTERVAL:
+            if now - last_reload >= _CAM_RELOAD_INTERVAL:  # type: ignore
                 new_cfg = _get_active_cameras()
                 _sync_processors(new_cfg)
                 last_reload = now

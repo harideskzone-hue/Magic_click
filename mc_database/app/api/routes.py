@@ -23,6 +23,32 @@ _CAMERAS_JSON = os.environ.get(
 MAX_CAMERAS = 4
 _cam_lock = threading.Lock()
 
+# ── Remote Camera IPC State ────────────────────────────────────────────────────
+_CAMERA_STATE_FILE = os.path.join(
+    os.environ.get("MAGIC_CLICK_DATA", os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))), "data")),
+    "camera_state.json"
+)
+_camera_state_lock = threading.Lock()
+
+def _get_camera_state():
+    if not os.path.exists(_CAMERA_STATE_FILE):
+        return {"active": False}
+    try:
+        with open(_CAMERA_STATE_FILE, "r") as f:
+            return json.load(f)
+    except Exception:
+        return {"active": False}
+
+def _set_camera_state(active: bool):
+    with _camera_state_lock:
+        os.makedirs(os.path.dirname(_CAMERA_STATE_FILE), exist_ok=True)
+        # Atomic-like write for cross-process safety
+        tmp = _CAMERA_STATE_FILE + ".tmp"
+        with open(tmp, "w") as f:
+            json.dump({"active": active, "updated_at": time.time()}, f)
+        os.replace(tmp, _CAMERA_STATE_FILE)
+        return {"active": active}
+
 # Pydantic Models
 class BatchAddImage(BaseModel):
     img: str
@@ -56,6 +82,21 @@ async def debug_last_upload():
     if not _last_upload_info:
         return JSONResponse({"status": "no_uploads_yet"})
     return JSONResponse(_last_upload_info)
+
+@api.get('/camera/status')
+async def camera_status():
+    """Return the intended hardware state of the camera (live_scorer reads this)."""
+    return JSONResponse(_get_camera_state())
+
+@api.post('/camera/start')
+async def camera_start():
+    """Request the scorer daemon to allocate hardware and begin."""
+    return JSONResponse(_set_camera_state(True))
+
+@api.post('/camera/stop')
+async def camera_stop():
+    """Request the scorer daemon to release hardware and enter standby."""
+    return JSONResponse(_set_camera_state(False))
 
 @api.post('/search')
 async def search_post(request: SearchRequest):
