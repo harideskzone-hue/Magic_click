@@ -98,12 +98,18 @@ def upload_best_frame(session_scored_dir: str, session_name: str) -> dict | None
 
     # Read internal token
     headers = {}
-    secret_path = os.path.join(os.path.dirname(__file__), "..", "mc_database", "data", ".session_secret")
+    data_dir = os.environ.get("MAGIC_CLICK_DATA")
+    if not data_dir:
+        # project-root/data
+        data_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data")
+    
+    secret_path = os.path.join(data_dir, ".session_secret")
     try:
-        with open(secret_path, "r") as f:
-            headers["x-internal-token"] = f.read().strip()
+        if os.path.exists(secret_path):
+            with open(secret_path, "r") as f:
+                headers["x-internal-token"] = f.read().strip()
     except Exception as e:
-        log.warning(f"[DB UPLOAD] Could not read internal token: {e}")
+        log.warning(f"[DB UPLOAD] Could not read internal token from {secret_path}: {e}")
 
     for attempt in range(1, _MAX_RETRIES + 1):
         try:

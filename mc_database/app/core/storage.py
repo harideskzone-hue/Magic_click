@@ -325,6 +325,20 @@ class Storage:
             
             return [dict(row) for row in rows]
 
+    def get_recent_images_global(self, n: int = 12) -> list[dict]:
+        """Get N most recent images across ALL persons."""
+        with self._get_connection() as conn:
+            rows = conn.execute("""
+                SELECT i.id, i.person_id, i.image_path, i.score, i.created_at,
+                       p.name as person_name
+                FROM images i
+                LEFT JOIN persons p ON i.person_id = p.id
+                ORDER BY i.created_at DESC
+                LIMIT ?
+            """, (n,)).fetchall()
+            
+            return [dict(row) for row in rows]
+
     def reset(self):
         """Delete all data (database and images)."""
         import shutil

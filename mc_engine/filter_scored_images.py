@@ -13,7 +13,7 @@ except ImportError:
     pass
 
 _DB_URL = os.environ.get("MC_DATABASE_URL", "http://localhost:5001")
-_MIN_SCORE_DEFAULT = int(os.environ.get("MC_MIN_SCORE", "60"))
+_MIN_SCORE_DEFAULT = int(os.environ.get("MC_MIN_SCORE", "45"))
 
 
 def _queue_failed_upload(output_dir: str, fname: str, score: float):

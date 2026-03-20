@@ -306,6 +306,12 @@ async def get_top_images():
     """Get top 3 images globally by score."""
     return face_service.get_top_images(n=3)
 
+@api.get('/recent')
+async def get_recent_images(n: int = Query(12)):
+    """Get N most recent images globally."""
+    # We add a new method to FaceService for this
+    return face_service.get_recent_images(n=n)
+
 @api.get('/person/{person_id}')
 async def get_person(person_id: str):
     """Get person info by ID."""

@@ -21,6 +21,10 @@ def main():
                 time.sleep(1.0)
                 continue
             
+            print("\n" + "═"*70)
+            print(f" 🚀 [NEW JOB] Picking up session {os.path.basename(job['video_path'])}")
+            print("═"*70)
+            
             job_id = job['id']
             video_path = job['video_path']
             frame_count = job['frame_count']

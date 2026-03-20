@@ -171,6 +171,22 @@
                 </div>
             </div>
         </section>
+        
+        <!-- ── Recent Shots Gallery ─────────────────────────────────────── -->
+        <section id="recent-shots-section" class="hidden">
+            <div class="bg-surface-white dark:bg-surface-dark rounded-xl p-8 border border-gray-100/30 dark:border-white/30">
+                <div class="flex items-center justify-between mb-6 border-b border-gray-50 dark:border-white/30 pb-4">
+                    <div>
+                        <h2 class="text-[11px] font-bold text-primary dark:text-white uppercase tracking-[0.2em]">Recent Shots</h2>
+                        <p class="text-text-tertiary text-xs mt-1">Latest high-scoring captures from the pipeline</p>
+                    </div>
+                    <a href="/upload" class="text-[10px] font-bold text-primary dark:text-white uppercase hover:underline">View All</a>
+                </div>
+                <div id="recent-shots-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                    <!-- Images injected here -->
+                </div>
+            </div>
+        </section>
 
         <section class="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div
@@ -328,6 +344,39 @@
         }
         refreshStats();                      // immediate first load
         setInterval(refreshStats, 8000);     // then every 8 s
+
+        function refreshRecentShots() {
+            fetch('/api/recent?n=12')
+                .then(r => r.json())
+                .then(data => {
+                    const grid = document.getElementById('recent-shots-grid');
+                    const section = document.getElementById('recent-shots-section');
+                    
+                    if (!data.images || data.images.length === 0) {
+                        section.classList.add('hidden');
+                        return;
+                    }
+                    
+                    section.classList.remove('hidden');
+                    grid.innerHTML = data.images.map(img => `
+                        <div class="group relative aspect-[3/4] rounded-lg overflow-hidden bg-gray-100 dark:bg-white/5 border border-gray-100 dark:border-white/10">
+                            <img src="data:image/jpeg;base64,${img.image}" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" alt="Shot">
+                            <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-3">
+                                <div class="flex items-center justify-between">
+                                    <span class="text-[10px] font-bold text-white uppercase">${img.person_name || 'Unknown'}</span>
+                                    <span class="text-[10px] font-bold text-green-400">${img.score.toFixed(1)}</span>
+                                </div>
+                            </div>
+                            <div class="absolute top-2 right-2 px-1.5 py-0.5 rounded bg-black/50 backdrop-blur-sm text-[8px] font-bold text-white">
+                                ${img.score.toFixed(0)}
+                            </div>
+                        </div>
+                    `).join('');
+                })
+                .catch(() => {});
+        }
+        refreshRecentShots();
+        setInterval(refreshRecentShots, 5000); // Poll every 5 seconds
     </script>
     <script>
         // ── Master Camera Toggle API ─────────────────────────────────────────

@@ -284,10 +284,12 @@ class FaceService:
         log.info("delete: person %s removed.", person_id)
         return {'success': True, 'message': f'Person {person_id} deleted'}
 
-    def get_top_images(self, n: int = 3) -> Dict[str, Any]:
-        """Get top N images globally by score."""
+    def get_recent_images(self, n: int = 12) -> Dict[str, Any]:
+        """Get N most recent images globally."""
         storage, _, _ = self._get_deps()
-        images = storage.get_top_images_global(n=n)
+        
+        # We need to add get_recent_images_global to Storage
+        images = storage.get_recent_images_global(n=n)
 
         image_list = []
         for img in images:
@@ -296,6 +298,7 @@ class FaceService:
                 'person_id': img['person_id'],
                 'person_name': img.get('person_name'),
                 'score': img['score'],
+                'created_at': img['created_at'],
                 'image': storage.get_image_as_base64(img['id'])
             })
 

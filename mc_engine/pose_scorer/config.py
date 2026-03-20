@@ -37,9 +37,10 @@ DETECTION = {
     # occupies less than 35% of frame height. 0.15 accepts any visible presence.
 }
 
-# BLUR_THRESHOLD is read from .env (BLUR_THRESHOLD=40).
-# IP cameras: 30-50. Webcam/DSLR: 80-100.
-_blur_threshold = float(_os.environ.get("BLUR_THRESHOLD", "85.0"))
+# BLUR_THRESHOLD is read from .env.
+# 30-50 for Webcams/IP Cameras. 80-100 for DSLR/Pro-gear.
+# Defaulting to 45.0 (permissive for webcams) if not set.
+_blur_threshold = float(_os.environ.get("BLUR_THRESHOLD", "45.0"))
 
 PREFLIGHT = {
     "blur_threshold":   _blur_threshold,

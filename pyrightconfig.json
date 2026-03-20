@@ -1,7 +1,7 @@
 {
   "include": ["mc_engine", "mc_database", "pipeline_test.py"],
   "exclude": ["**/__pycache__", "**/.venv"],
-  "venvPath": "~/Library/Application Support/MagicClick",
+  "venvPath": ".",
   "venv": ".venv",
   "pythonVersion": "3.11",
   "typeCheckingMode": "basic",

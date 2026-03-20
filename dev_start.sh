@@ -265,9 +265,9 @@ done
 # ═══════════════════════════════════════════════════════════════════════════
 # STEP 6: Launch job_worker
 # ═══════════════════════════════════════════════════════════════════════════
-echo -e "${BLUE}[LAUNCH] Starting job_worker…${NC}"
-"$VENV_PY" "$SCRIPT_DIR/mc_engine/job_worker.py" \
-    >> "$LOG_DIR/worker.log" 2>&1 &
+echo -e "${BLUE}[LAUNCH] Starting job_worker (progress will show below)…${NC}"
+"$VENV_PY" -u "$SCRIPT_DIR/mc_engine/job_worker.py" \
+    2>&1 | tee -a "$LOG_DIR/worker.log" &
 WORKER_PID=$!
 echo "  PID: $WORKER_PID"
 
