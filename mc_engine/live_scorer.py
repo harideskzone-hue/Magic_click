@@ -152,11 +152,11 @@ class CameraStream:
         self.stopped = False
         self.frame_id = 0
         self._lock = threading.Lock()
-        self._thread = None
+        self._thread: "threading.Thread | None" = None
 
     def start(self):
-        self._thread = threading.Thread(target=self._update, daemon=True)
-        self._thread.start()
+        self._thread = threading.Thread(target=self._update, daemon=True)  # type: ignore
+        self._thread.start()  # type: ignore
         return self
 
     def _update(self):
@@ -186,8 +186,8 @@ class CameraStream:
 
     def stop(self):
         self.stopped = True
-        if hasattr(self, '_thread') and self._thread.is_alive():
-            self._thread.join(timeout=2.0)
+        if hasattr(self, '_thread') and self._thread.is_alive():  # type: ignore
+            self._thread.join(timeout=2.0)  # type: ignore
 
 
 # ── Non-blocking YOLO inference thread ───────────────────────────────────────
@@ -210,8 +210,8 @@ class YoloDetectorThread:
         self._thread = None
 
     def start(self):
-        self._thread = threading.Thread(target=self._run, daemon=True)
-        self._thread.start()
+        self._thread = threading.Thread(target=self._run, daemon=True)  # type: ignore
+        self._thread.start()  # type: ignore
         return self
 
     def submit(self, small_frame):
@@ -269,8 +269,8 @@ class YoloDetectorThread:
 
     def stop(self):
         self._stopped = True
-        if hasattr(self, '_thread') and self._thread.is_alive():
-            self._thread.join(timeout=1.0)
+        if hasattr(self, '_thread') and self._thread.is_alive():  # type: ignore
+            self._thread.join(timeout=1.0)  # type: ignore
 
 
 class CameraProcessor:
