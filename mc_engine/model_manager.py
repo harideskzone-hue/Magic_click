@@ -88,7 +88,7 @@ def validate_models() -> dict:
             sha_ok = actual == info["sha256"]
             if not sha_ok:
                 log.warning("Checksum mismatch for %s: expected=%s got=%s",
-                            fname, info["sha256"][:16], actual[:16])
+                            fname, info["sha256"][:16], actual[:16])  # type: ignore
         results[fname] = {
             "exists": exists,
             "sha_ok": sha_ok,
@@ -174,7 +174,7 @@ def warmup_models() -> Dict[str, Any]:
             t0 = time.time()
             from ultralytics import YOLO  # type: ignore
             _model = YOLO(yolo_path)
-            results["yolo"] = {"loaded": True, "time_s": round(time.time() - t0, 2)}
+            results["yolo"] = {"loaded": True, "time_s": round(time.time() - t0, 2)}  # type: ignore
             log.info("YOLO warmup: %.2fs", results["yolo"]["time_s"])
         except Exception as e:
             results["yolo"] = {"loaded": False, "error": str(e)}
@@ -188,7 +188,7 @@ def warmup_models() -> Dict[str, Any]:
         import insightface  # type: ignore
         _app = insightface.app.FaceAnalysis(name="buffalo_sc", providers=["CPUExecutionProvider"])
         _app.prepare(ctx_id=0, det_size=(640, 640))
-        results["insightface"] = {"loaded": True, "time_s": round(time.time() - t0, 2)}
+        results["insightface"] = {"loaded": True, "time_s": round(time.time() - t0, 2)}  # type: ignore
         log.info("InsightFace warmup: %.2fs", results["insightface"]["time_s"])
     except Exception as e:
         results["insightface"] = {"loaded": False, "error": str(e)}
