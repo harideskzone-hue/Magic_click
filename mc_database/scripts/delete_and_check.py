@@ -1,15 +1,17 @@
-
 import os
 import sys
+import argparse
+import asyncio
 import base64
-import cv2
-import numpy as np
+import cv2  # type: ignore
+import numpy as np  # type: ignore
 
-# Add project root to path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+# Add parent directory to path to allow 'app' imports
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from app.services.face_service import FaceService
-from app.core.vector_db import get_vector_db
+from app.services.face_service import FaceService  # type: ignore
+from app.core.vector_db import get_vector_db  # type: ignore
+from app.core.image_utils import encode_image_to_bytes
 
 def delete_and_check():
     fs = FaceService()
