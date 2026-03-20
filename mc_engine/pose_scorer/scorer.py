@@ -172,7 +172,7 @@ def _generate_debug_image(bgr_image, person_bbox, face_bbox, crop_meta, raw_face
     pw, ph = min(310, dw), min(200, dh)
     region = debug[0:ph, 0:pw].copy()
     dark   = np.full_like(region, (8, 10, 16))
-    debug[0:ph, 0:pw] = cv2.addWeighted(dark, 0.78, region, 0.22, 0)
+    debug[0:ph, 0:pw] = cv2.addWeighted(dark, 0.78, region, 0.22, 0)  # type: ignore
 
     status = result.get('status', '')
     score  = result.get('final_score')

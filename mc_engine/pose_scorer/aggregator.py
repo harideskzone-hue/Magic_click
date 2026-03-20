@@ -40,15 +40,15 @@ def _aggregate_group(modules: dict, weights: dict, config: dict) -> float | None
         if eff > 0.0:
             if config.get('DEBUG', False):
                 print(f"[DEBUG] {mod_name}: score={sc} eff_conf={eff:.3f} w={w} contribution={sc*w*eff:.3f}")
-            num += sc * w * eff
-            den += w * eff
+            num += sc * w * eff  # type: ignore
+            den += w * eff  # type: ignore
         else:
             if config.get('DEBUG', False):
                 print(f"[DEBUG] {mod_name}: ZEROED OUT (eff_conf={eff:.3f} < threshold)")
 
     if den == 0.0:
         return None   # all modules skipped
-    return num / (den + 1e-9)
+    return num / (den + 1e-9)  # type: ignore
 
 
 def aggregate(preflight: dict, frame_result: dict, face_group: dict, body_group: dict, config: dict) -> tuple:
@@ -67,14 +67,14 @@ def aggregate(preflight: dict, frame_result: dict, face_group: dict, body_group:
         face_score = _aggregate_group(
             face_group.get('modules', {}), config['FACE_WEIGHTS'], config
         )
-        face_group['group_score'] = round(face_score, 1) if face_score is not None else None
+        face_group['group_score'] = round(face_score, 1) if face_score is not None else None  # type: ignore
 
     body_score = body_group.get('group_score')
     if body_score is None:
         body_score = _aggregate_group(
             body_group.get('modules', {}), config['BODY_WEIGHTS'], config
         )
-        body_group['group_score'] = round(body_score, 1) if body_score is not None else None
+        body_group['group_score'] = round(body_score, 1) if body_score is not None else None  # type: ignore
 
     # Keep DEBUG prints for module contribution visibility (secondary pass, no side-effects)
     _aggregate_group(face_group.get('modules', {}), config['FACE_WEIGHTS'], config)
@@ -117,6 +117,6 @@ def aggregate(preflight: dict, frame_result: dict, face_group: dict, body_group:
             
         final *= multiplier
 
-    final = round(final, 2)
+    final = round(final, 2)  # type: ignore
     return final, _score_band(final, config)
 
