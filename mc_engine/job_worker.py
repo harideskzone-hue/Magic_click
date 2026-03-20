@@ -35,8 +35,9 @@ def main():
             try:
                 # We use the existing post_process_video.py logic for processing the mp4
                 # NOTE: No capture_output so all logs (including DB uploads) print in real time
+                script_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "post_process_video.py")
                 result = subprocess.run(
-                    [sys.executable, "post_process_video.py", "--video", video_path],
+                    [sys.executable, script_path, "--video", video_path],
                     check=True
                 )
                 duration = time.time() - start_time
