@@ -22,7 +22,7 @@ class FaceEncoder:
         
         # Point to the local models directory in mc_engine
         # FaceAnalysis(name='N', root='R') looks for 'R/models/N/'
-        from app.config import BASE_DIR
+        from app.config import BASE_DIR  # type: ignore
         # BASE_DIR is .../mc_database. One level up is project root.
         # Models are in mc_engine/models/
         mc_engine_dir = os.path.join(os.path.dirname(BASE_DIR), "mc_engine")

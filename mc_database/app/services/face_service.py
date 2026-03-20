@@ -2,13 +2,13 @@ from typing import Dict, List, Optional, Any, Union
 import logging
 import uuid
 import threading
-import numpy as np
+import numpy as np  # type: ignore
 
-from app.config import SIMILARITY_THRESHOLD, MIN_DET_SCORE
-from app.core.encoder import get_encoder
-from app.core.vector_db import get_vector_db
-from app.core.storage import get_storage
-from app.core.image_utils import decode_base64_image, encode_image_to_bytes
+from app.config import SIMILARITY_THRESHOLD, MIN_DET_SCORE  # type: ignore
+from app.core.encoder import get_encoder  # type: ignore
+from app.core.vector_db import get_vector_db  # type: ignore
+from app.core.storage import get_storage  # type: ignore
+from app.core.image_utils import decode_base64_image, encode_image_to_bytes  # type: ignore
 
 log = logging.getLogger("face_service")
 

@@ -1,21 +1,21 @@
 import os
-import cv2
-import numpy as np
+import cv2  # type: ignore
+import numpy as np  # type: ignore
 import sys
-from ultralytics import YOLO
+from ultralytics import YOLO  # type: ignore
 
 # Add current dir to path for imports
 sys.path.insert(0, r'c:\project\temp_magikCLick')
 
-from pose_scorer import config as cfg
-from pose_scorer.preprocessor import prepare_image
-from pose_scorer.detection.yolo_detector import detect_person, detect_face
-from pose_scorer.detection.crop import make_person_crop, make_face_crop
-from pose_scorer.scorer import init_detectors, score_image
-from pose_scorer.aggregator import aggregate
+from pose_scorer import config as cfg  # type: ignore
+from pose_scorer.preprocessor import prepare_image  # type: ignore
+from pose_scorer.detection.yolo_detector import detect_person, detect_face  # type: ignore
+from pose_scorer.detection.crop import make_person_crop, make_face_crop  # type: ignore
+from pose_scorer.scorer import init_detectors, score_image  # type: ignore
+from pose_scorer.aggregator import aggregate  # type: ignore
 
-import mediapipe as mp
-from mediapipe.framework.formats import landmark_pb2
+import mediapipe as mp  # type: ignore
+from mediapipe.framework.formats import landmark_pb2  # type: ignore
 
 def draw_pose(img, landmarks):
     if not landmarks: return img
@@ -60,7 +60,11 @@ def create_viz(img_path, pd, fd, fl, pl, output_dir):
 
     # 1. Load & Preflight
     bgr, pf = prepare_image(img_path, config_dict)
-    if bgr is None: return print(f"Skipping {fname}: {pf['skip_reason']}")
+    if bgr is None:
+        print(f"Skipping {fname}: {pf['skip_reason']}")
+        return
+        
+    assert bgr is not None  # type narrowing for Pyre
     full_h, full_w = bgr.shape[:2]
 
     # 2. Person detection
@@ -174,7 +178,7 @@ def main():
     paths = [os.path.join(img_dir, f) for f in os.listdir(img_dir) if f.lower().endswith(('.jpg', '.jpeg', '.png'))]
     print(f"Visualizing {len(paths)} images...")
     
-    for p in paths[:10]: # limit to 10 for now
+    for p in paths[:10]: # type: ignore
         create_viz(p, pd, fd, fl, pl, out_dir)
 
 if __name__ == "__main__":

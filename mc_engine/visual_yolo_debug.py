@@ -1,12 +1,12 @@
 import os
-import cv2
+import cv2  # type: ignore
 import glob
-from ultralytics import YOLO
+from ultralytics import YOLO  # type: ignore
 
 # Ensure working directory is correctly scoped
 import sys
 sys.path.insert(0, r'c:\project\temp_magikCLick')
-from pose_scorer import config as cfg
+from pose_scorer import config as cfg  # type: ignore
 
 def run_visual_debug():
     cfg.validate()
@@ -17,7 +17,7 @@ def run_visual_debug():
     os.makedirs(output_dir, exist_ok=True)
     
     # Grab first 5 images for isolated testing
-    image_paths = glob.glob(os.path.join(input_dir, "*.jpg"))[:5]
+    image_paths = glob.glob(os.path.join(input_dir, "*.jpg"))[:5]  # type: ignore
     
     print(f"Running detection on {len(image_paths)} images, saving to {output_dir}")
     
