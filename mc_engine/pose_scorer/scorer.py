@@ -1,23 +1,23 @@
 import os
 import argparse
 import base64
-import cv2
-import numpy as np
-from ultralytics import YOLO
+import cv2  # pyre-ignore
+import numpy as np  # pyre-ignore
+from ultralytics import YOLO  # pyre-ignore
 
-from pose_scorer import config as cfg
-from pose_scorer.preprocessor import prepare_image
-from pose_scorer.detection.yolo_detector import detect_person, detect_face
-from pose_scorer.frame_check import check_face
-from pose_scorer.detection.crop import make_face_crop
-from pose_scorer.body_group import run_body_group
-from pose_scorer.face_group import run_face_group
-from pose_scorer.aggregator import aggregate
-from pose_scorer.reporter import build_result, output_reports
+from pose_scorer import config as cfg  # pyre-ignore
+from pose_scorer.preprocessor import prepare_image  # pyre-ignore
+from pose_scorer.detection.yolo_detector import detect_person, detect_face  # pyre-ignore
+from pose_scorer.frame_check import check_face  # pyre-ignore
+from pose_scorer.detection.crop import make_face_crop  # pyre-ignore
+from pose_scorer.body_group import run_body_group  # pyre-ignore
+from pose_scorer.face_group import run_face_group  # pyre-ignore
+from pose_scorer.aggregator import aggregate  # pyre-ignore
+from pose_scorer.reporter import build_result, output_reports  # pyre-ignore
 
-import mediapipe as mp
-from mediapipe.tasks import python as mp_python
-from mediapipe.tasks.python import vision as mp_vision
+import mediapipe as mp  # pyre-ignore
+from mediapipe.tasks import python as mp_python  # pyre-ignore
+from mediapipe.tasks.python import vision as mp_vision  # pyre-ignore
 
 def init_detectors():
     face_opts = mp_vision.FaceLandmarkerOptions(
