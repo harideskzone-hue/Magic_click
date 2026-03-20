@@ -90,7 +90,7 @@
                             <span class="relative flex h-2.5 w-2.5">
                                 <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-gray-400"></span>
                             </span>
-                            <span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Idle</span>
+                            <span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Camera Stopped</span>
                         </div>
                         <button id="cam-toggle-btn" onclick="toggleSystemCamera()" class="px-5 py-2 text-xs font-bold rounded-lg bg-primary dark:bg-white text-white dark:text-primary hover:opacity-90 shadow-sm transition-all focus:outline-none">
                             Start Camera
@@ -352,7 +352,7 @@
                         <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-500 opacity-20"></span>
                         <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.4)]"></span>
                     </span>
-                    <span class="text-[10px] font-bold text-green-500 uppercase tracking-widest">Live</span>
+                    <span class="text-[10px] font-bold text-green-500 uppercase tracking-widest">Camera Running</span>
                 `;
             } else {
                 btn.textContent = "Start Camera";
@@ -362,7 +362,7 @@
                     <span class="relative flex h-2.5 w-2.5">
                         <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-gray-400"></span>
                     </span>
-                    <span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Idle</span>
+                    <span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Camera Stopped</span>
                 `;
             }
         }
