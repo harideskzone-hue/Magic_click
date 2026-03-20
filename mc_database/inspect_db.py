@@ -4,7 +4,7 @@ View contents of the SQLite database directly.
 """
 import sqlite3
 import os
-from app.config import SQLITE_PATH, IMAGES_DIR
+from app.config import SQLITE_PATH, IMAGES_DIR # type: ignore
 
 def inspect_database():
     """Print all database contents."""
@@ -55,7 +55,7 @@ def inspect_database():
     print(f"Total images: {len(images)}")
     
     # Check FAISS index
-    from app.config import FAISS_INDEX_PATH
+    from app.config import FAISS_INDEX_PATH # type: ignore
     if os.path.exists(FAISS_INDEX_PATH):
         print(f"FAISS index exists: ✅")
     else:
