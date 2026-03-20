@@ -1,20 +1,22 @@
 import os
 import argparse
-import cv2
+import cv2  # type: ignore
 import sys
 import json
-from tqdm import tqdm
-from ultralytics import YOLO
+import time
+import shutil
+from tqdm import tqdm  # type: ignore
+from ultralytics import YOLO  # type: ignore
+from dataclasses import asdict
 
 # Use __file__ (absolute), not os.getcwd(), so this works regardless of launch dir
-_ENGINE_ROOT = os.path.dirname(os.path.abspath(__file__))
-if _ENGINE_ROOT not in sys.path:
-    sys.path.insert(0, _ENGINE_ROOT)
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from pose_scorer import config as cfg
-from pose_scorer.scorer import init_detectors, score_image
-from pose_scorer.viz_utils import create_pipeline_viz
-from pose_scorer.preprocessor import prepare_image
+# Import the refactored pose_scorer module
+from pose_scorer import config as cfg  # type: ignore
+from pose_scorer.scorer import init_detectors, score_image  # type: ignore
+from pose_scorer.viz_utils import create_pipeline_viz  # type: ignore
+from pose_scorer.preprocessor import prepare_image  # type: ignore
 
 def main():
     parser = argparse.ArgumentParser(description="Terminal Folder Scorer with Visualization")
