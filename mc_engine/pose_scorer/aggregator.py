@@ -51,12 +51,12 @@ def _aggregate_group(modules: dict, weights: dict, config: dict) -> float | None
     return num / (den + 1e-9)
 
 
-def aggregate(frame_result: dict, face_group: dict, body_group: dict, config: dict) -> tuple:
+def aggregate(preflight: dict, frame_result: dict, face_group: dict, body_group: dict, config: dict) -> tuple:
     """
     STAGE 8: AGGREGATION
     LEVEL 2 — across groups, with weight redistribution for None groups.
-    Uses pre-computed group_score (which includes penalties) if already set by the group.
-    Only re-computes via _aggregate_group() as fallback when group_score is None.
+    Applies a graduated penalty to the final score based on image sharpness (Laplacian variance)
+    to prevent blurry images with perfect poses from ranking artificially high.
     Returns (final_score, score_band).
     """
     frame_score = frame_result.get('offset_score', 0.0)
@@ -92,6 +92,31 @@ def aggregate(frame_result: dict, face_group: dict, body_group: dict, config: di
         return None, ""
 
     final = sum(active[k] * config['GROUP_WEIGHTS'][k] for k in active) / (total_w + 1e-9)
+
+    # ── SHARPNESS PENALTY MULTIPLIER ─────────────────────────────────────────
+    # We penalize frames that barely passed the blur_threshold. Blurry images
+    # should NEVER outrank sharp images, even if the person's pose is flawless.
+    blur_score = preflight.get('blur_score', 500.0)
+    blur_threshold = config['PREFLIGHT']['blur_threshold']
+    
+    # safe_cap is the Laplacian variance where no penalty is applied (1.0x).
+    # Since webcams vary wildly, we assign safe_cap dynamically 1.5x above the 
+    # minimum required threshold.
+    safe_cap = max(150.0, blur_threshold + (blur_threshold * 0.5))
+    
+    if blur_score < safe_cap and blur_threshold > 0:
+        # Scale between 0.0 (at exactly threshold) to 1.0 (at safe_cap)
+        ratio = max(0.0, (blur_score - blur_threshold) / (safe_cap - blur_threshold))
+        
+        # A frame that perfectly rides the threshold (e.g. 85.1 blur_score) gets
+        # cut safely in half: 0.50x multiplier.
+        multiplier = 0.50 + (0.50 * ratio)
+        
+        if config.get('DEBUG', False):
+            print(f"[SHARPNESS PENALTY] Blur:{blur_score:.1f} SafeCap:{safe_cap:.1f} -> Mutliplier: {multiplier:.2f}x (Score {final:.1f} -> {final*multiplier:.1f})")
+            
+        final *= multiplier
+
     final = round(final, 2)
     return final, _score_band(final, config)
 

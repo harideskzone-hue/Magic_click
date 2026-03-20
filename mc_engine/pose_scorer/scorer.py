@@ -421,7 +421,7 @@ def score_image(image_path: str, person_detector, face_detector, face_landmarker
     raw_face = face_res.pop('_raw', None)
 
     # 8
-    final_score, score_band = aggregate(frame_res, face_res, body_res, config_dict)
+    final_score, score_band = aggregate(preflight, frame_res, face_res, body_res, config_dict)
     
     # ── Reject if face group produced no score ────────────────────────────
     if face_res.get('group_score') is None:
