@@ -1,19 +1,20 @@
 
 import os
 import sys
-import numpy as np
-import faiss
+import argparse
+import numpy as np  # type: ignore
+import faiss  # type: ignore
 
-# Add project root
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+# Add parent directory to path so we can import 'app'
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from app.core.vector_db import VectorDB
+from app.core.vector_db import get_vector_db  # type: ignore
 
 def test_rematch_logic():
     print("--- Test: VectorDB Soft-Delete Rematch Logic ---")
     
     # 1. Init VectorDB
-    db = VectorDB()
+    db = get_vector_db()
     # OVERRIDE path to use a test file (crucial to avoid wiping prod DB)
     db.index_path = 'test_faiss.index'
     # Reset to be clean (this will clear test_faiss.index if it exists, and init empty in-memory index)
@@ -96,7 +97,7 @@ def test_rematch_logic():
     # Note: VectorDB.search returns results regardless of threshold, 
     # but we want to simulate what the Service does.
     # The service logic is: if score < THRESHOLD, treat as no match.
-    from app.config import SIMILARITY_THRESHOLD
+    from app.config import SIMILARITY_THRESHOLD  # type: ignore
     
     results = db.search(vec_a, top_k=1)
     
