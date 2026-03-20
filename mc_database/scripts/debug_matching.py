@@ -1,15 +1,16 @@
 
 import os
 import sys
-import numpy as np
-import cv2
+import argparse
+import numpy as np  # type: ignore
+import cv2  # type: ignore
 
-# Add project root to path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+# Add parent directory to path to allow 'app' imports
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from app.core.vector_db import get_vector_db
-from app.core.encoder import get_encoder
-from app.config import SIMILARITY_THRESHOLD
+from app.core.vector_db import get_vector_db  # type: ignore
+from app.core.encoder import get_encoder  # type: ignore
+from app.config import SIMILARITY_THRESHOLD, FAISS_INDEX_PATH, SQLITE_PATH # type: ignore
 
 def debug_matching():
     target_image_path = r"c:\projects\mc_database\data\images\1b50434d-9aea-40f6-82de-83382d393363\b7bc89ce-f650-4d01-af2f-796d6c1af7b3.jpg"

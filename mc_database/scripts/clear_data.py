@@ -1,4 +1,3 @@
-
 """
 Script to clear all data from the database and image storage.
 This is a destructive operation!
@@ -9,8 +8,8 @@ import os
 # Add project root to path so we can import from app
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from app.core.storage import get_storage
-from app.core.vector_db import get_vector_db
+from app.core.storage import get_storage  # type: ignore
+from app.core.vector_db import get_vector_db  # type: ignore
 
 def main():
     print("WARNING: This will delete ALL data (persons, images, embeddings)!")
