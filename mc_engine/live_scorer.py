@@ -97,12 +97,12 @@ def _preflight():
 
     # 4. Session token
     token_ok = False
-    if sys.platform == "darwin":
-        _usr_dir = os.path.join(os.path.expanduser("~"), "Library", "Application Support", "MagicClick")
-    elif sys.platform == "win32":
-        _usr_dir = os.path.join(os.environ.get("APPDATA", os.path.expanduser("~")), "MagicClick")
+    if getattr(sys, 'frozen', False):
+        _base = os.path.dirname(sys.executable)
     else:
-        _usr_dir = os.path.join(os.path.expanduser("~"), ".magic_click")
+        _base = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        
+    _usr_dir = os.environ.get("MAGIC_CLICK_DATA", os.path.join(_base, "data"))
     _secret = os.path.join(_usr_dir, ".session_secret")
     if os.path.isfile(_secret):
         token_ok = True

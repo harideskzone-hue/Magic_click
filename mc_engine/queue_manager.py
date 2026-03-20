@@ -11,12 +11,11 @@ import time
 
 # ── User data directory (same logic as bootstrap.py) ─────────────────────────
 def _user_data_dir() -> str:
-    if sys.platform == "darwin":
-        return os.path.join(os.path.expanduser("~"), "Library", "Application Support", "MagicClick")
-    elif sys.platform == "win32":
-        return os.path.join(os.environ.get("APPDATA", os.path.expanduser("~")), "MagicClick")
-    else:
-        return os.path.join(os.path.expanduser("~"), ".magic_click")
+    # Use environment variable or fallback to repo-local data/ directory
+    path = os.environ.get("MAGIC_CLICK_DATA")
+    if not path:
+        path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data")
+    return os.path.abspath(path)
 
 USER_DATA   = _user_data_dir()
 VIDEOS_DIR  = os.path.join(USER_DATA, "captured_videos")

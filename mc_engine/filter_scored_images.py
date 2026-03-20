@@ -93,12 +93,9 @@ def filter_scored_images(input_dir, source_dir, output_dir, min_score=None, repo
             # Read internal token (same approach as db_uploader.py)
             headers = {}
             import sys
-            if sys.platform == "win32":
-                _usr_dir = os.path.join(os.environ.get("APPDATA", os.path.expanduser("~")), "MagicClick")
-            elif sys.platform == "darwin":
-                _usr_dir = os.path.join(os.path.expanduser("~"), "Library", "Application Support", "MagicClick")
-            else:
-                _usr_dir = os.path.join(os.path.expanduser("~"), ".magic_click")
+            _usr_dir = os.environ.get("MAGIC_CLICK_DATA")
+            if not _usr_dir:
+                _usr_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data")
             
             _secret_path = os.path.join(_usr_dir, ".session_secret")
             
