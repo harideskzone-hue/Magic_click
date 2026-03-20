@@ -85,8 +85,23 @@ async def debug_last_upload():
 
 @api.get('/camera/status')
 async def camera_status():
-    """Return the intended hardware state of the camera (live_scorer reads this)."""
-    return JSONResponse(_get_camera_state())
+    """Return the intended hardware state of the camera and the background processing queue size."""
+    import typing
+    state: dict[str, typing.Any] = _get_camera_state()  # type: ignore
+    try:
+        import sqlite3
+        db_path = os.path.join(
+            os.environ.get("MAGIC_CLICK_DATA", os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))), "data")),
+            "captured_videos", "jobs.db"
+        )
+        if os.path.exists(db_path):
+            with sqlite3.connect(db_path, timeout=2.0) as conn:
+                state["pending_jobs"] = conn.execute("SELECT COUNT(*) FROM jobs WHERE status = 'PENDING'").fetchone()[0]
+        else:
+            state["pending_jobs"] = 0
+    except Exception as e:
+        state["pending_jobs"] = 0
+    return JSONResponse(state)
 
 @api.post('/camera/start')
 async def camera_start():

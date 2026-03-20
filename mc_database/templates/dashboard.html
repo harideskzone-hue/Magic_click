@@ -92,6 +92,9 @@
                             </span>
                             <span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Camera Stopped</span>
                         </div>
+                        <div id="pipeline-status-indicator" class="flex items-center gap-2 hidden">
+                            <!-- Injected dynamically -->
+                        </div>
                         <button id="cam-toggle-btn" onclick="toggleSystemCamera()" class="px-5 py-2 text-xs font-bold rounded-lg bg-primary dark:bg-white text-white dark:text-primary hover:opacity-90 shadow-sm transition-all focus:outline-none">
                             Start Camera
                         </button>
@@ -334,15 +337,17 @@
                 const res = await fetch('/api/camera/status');
                 if (res.ok) {
                     const data = await res.json();
-                    updateCameraUI(data.active);
+                    updateCameraUI(data.active, data.pending_jobs || 0);
                 }
             } catch (e) { console.error('Failed to read camera state', e); }
         }
 
-        function updateCameraUI(active) {
+        function updateCameraUI(active, pending_jobs = 0) {
             isCameraActive = active;
             const btn = document.getElementById('cam-toggle-btn');
             const ind = document.getElementById('cam-status-indicator');
+            const pipeInd = document.getElementById('pipeline-status-indicator');
+            
             if (active) {
                 btn.textContent = "Stop Camera";
                 btn.classList.add('bg-red-500', 'text-white', 'hover:bg-red-600');
@@ -363,6 +368,29 @@
                         <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-gray-400"></span>
                     </span>
                     <span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Camera Stopped</span>
+                `;
+            }
+            
+            // Set dual-state Pipeline Indicator
+            if (pending_jobs > 0) {
+                pipeInd.classList.remove('hidden');
+                // Use absolute positioning or margin for correct visual placement
+                pipeInd.innerHTML = `
+                    <div class="h-4 w-px bg-gray-300 dark:bg-white/20 mx-1"></div>
+                    <span class="relative flex h-2.5 w-2.5">
+                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-500 opacity-40"></span>
+                        <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-500"></span>
+                    </span>
+                    <span class="text-[10px] font-bold text-amber-500 uppercase tracking-widest">Processing ${pending_jobs} Job${pending_jobs>1?'s':''}...</span>
+                `;
+            } else {
+                pipeInd.classList.remove('hidden');
+                pipeInd.innerHTML = `
+                    <div class="h-4 w-px bg-gray-300 dark:bg-white/20 mx-1"></div>
+                    <span class="relative flex h-2.5 w-2.5">
+                        <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-gray-300 dark:bg-white/20"></span>
+                    </span>
+                    <span class="text-[10px] font-bold text-gray-400 dark:text-white/40 uppercase tracking-widest">Pipeline Idle</span>
                 `;
             }
         }

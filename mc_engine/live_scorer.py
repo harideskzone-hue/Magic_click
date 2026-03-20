@@ -414,8 +414,14 @@ class CameraProcessor:
     def stop(self):
         self.yolo_thread.stop()
         self.stream.stop()
-        if self.video_writer:
+        if self.is_recording and self.video_writer:
             self.video_writer.release()
+            self.video_writer = None
+            self.is_recording = False
+            
+            # SAFELY FLUSH FINAL BUFFER TO QUEUE ON SHUTDOWN
+            print(f"\n[CAM {self.cam_id}] Camera Stopped — Submitting final {self.frame_count_this_session} frames to SJF Queue...")
+            queue_manager.add_job(self.video_fname, self.frame_count_this_session)
 
 # ── Remote Camera IPC State ────────────────────────────────────────────────────
 _CAMERA_STATE_FILE = os.environ.get(
@@ -564,6 +570,7 @@ def main():
     print("Awaiting Start signal from Dashboard http://localhost:5001/")
 
     last_reload = 0.0
+    last_queue_log = 0.0
     system_active = False
 
     try:
@@ -584,6 +591,15 @@ def main():
                     system_active = False
                     print("  [SYSTEM] Hardware released. Entering IDLE state.")
                     time.sleep(1.0) # Pause an extra beat to let hardware catch up
+                
+                # ── LOG BACKGROUND QUEUE PROCESSING WHILE CAMERA STOPPED ──
+                pending = queue_manager.get_pending_count()
+                if pending > 0:
+                    # Print without spamming every 0.5s
+                    now_time = time.time()
+                    if now_time - last_queue_log > 3.0:
+                        print(f"  [CAMERA STOPPED — PROCESSING QUEUE] {pending} jobs remaining in background...")
+                        last_queue_log = now_time
                 
                 time.sleep(0.5)
                 continue
