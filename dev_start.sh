@@ -296,7 +296,7 @@ if [ "$DEBUG_MODE" = true ]; then
 fi
 
 cd "$SCRIPT_DIR/mc_engine"
-"$VENV_PY" "$SCRIPT_DIR/mc_engine/live_scorer.py" $SCORER_ARGS \
+"$VENV_PY" -u "$SCRIPT_DIR/mc_engine/live_scorer.py" $SCORER_ARGS \
     2>&1 | tee -a "$LOG_DIR/scorer.log"
 
 # If live_scorer exits, the trap will clean up everything
