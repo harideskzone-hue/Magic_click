@@ -29,12 +29,15 @@ SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 cd "$SCRIPT_DIR"
 
 # ── Constants ──────────────────────────────────────────────────────────────
-USER_DATA="$HOME/Library/Application Support/MagicClick"
-VENV_DIR="$USER_DATA/.venv"
+# We now use local directories within the repo for a fully standalone setup.
+USER_DATA="$SCRIPT_DIR/data"
+VENV_DIR="$SCRIPT_DIR/.venv"
 VENV_PY="$VENV_DIR/bin/python3"
-LOG_DIR="$USER_DATA/logs"
+LOG_DIR="$SCRIPT_DIR/logs"
 API_PORT=5001
 LOCK_FILE="/tmp/magic_click_dev.lock"
+
+
 
 # Pids to track for cleanup
 DB_PID=""

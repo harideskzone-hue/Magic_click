@@ -19,11 +19,23 @@ class FaceEncoder:
         """
         import os
         det_px = int(os.environ.get("MC_DET_SIZE", "640"))
+        
+        # Point to the local models directory in mc_engine
+        # FaceAnalysis(name='N', root='R') looks for 'R/models/N/'
+        from app.config import BASE_DIR
+        # BASE_DIR is .../mc_database. One level up is project root.
+        # Models are in mc_engine/models/
+        mc_engine_dir = os.path.join(os.path.dirname(BASE_DIR), "mc_engine")
+        
         self.app = FaceAnalysis(
-            name='buffalo_sc',  # Lightweight model that auto-downloads (~14MB)
+            name='buffalo_sc',
+            root=mc_engine_dir,  # <--- Looks for mc_engine_dir/models/buffalo_sc
             providers=['CPUExecutionProvider']
         )
+
+
         self.app.prepare(ctx_id=-1, det_size=(det_px, det_px))
+
 
     
     def detect_and_encode(self, image: np.ndarray) -> tuple[np.ndarray | None, dict | None]:

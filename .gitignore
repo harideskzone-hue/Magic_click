@@ -2,18 +2,19 @@
 __pycache__/
 *.py[cod]
 *$py.class
+# Logs & Runtime
+logs/
+*.log
 .venv/
 .env
-
-# Logs
-*.log
 magic_click_setup.log
-mc_database/score_output.log
 
-# Data & Models
+# Data (Standalone Repo)
+data/
 mc_database/data/
 captured_videos/
 captured_shots/
+
 temp_output/
 *.mp4
 *.jpg

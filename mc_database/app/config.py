@@ -6,13 +6,15 @@ import sys
 # Base directories
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-# Unified User Data Directory (fixes root PermissionError in /Applications)
-if sys.platform == "win32":
-    USER_DATA_DIR = os.path.join(os.environ.get("APPDATA", os.path.expanduser("~")), "MagicClick")
-elif sys.platform == "darwin":
-    USER_DATA_DIR = os.path.join(os.path.expanduser("~"), "Library", "Application Support", "MagicClick")
-else:
-    USER_DATA_DIR = os.path.join(os.path.expanduser("~"), ".magic_click")
+# Unified User Data Directory (Standalone/Portable mode)
+# Priority: 1. MAGIC_CLICK_DATA env var, 2. repository-local data/ folder
+USER_DATA_DIR = os.environ.get("MAGIC_CLICK_DATA")
+if not USER_DATA_DIR:
+    # Default to data/ directory at the project root (one level above mc_database)
+    USER_DATA_DIR = os.path.join(os.path.dirname(BASE_DIR), "data")
+
+USER_DATA_DIR = os.path.abspath(USER_DATA_DIR)
+
 
 DATA_DIR = os.path.join(USER_DATA_DIR, 'mc_database_data')
 IMAGES_DIR = os.path.join(DATA_DIR, 'images')
